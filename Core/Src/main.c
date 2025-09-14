@@ -1,207 +1,267 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <locale.h>
 #include <string.h>
+#include <wchar.h>
+#include <termios.h>
+#include <signal.h>
+#include <sys/ioctl.h>
 
-#include <curl/curl.h>
+#include "../Inc/tui.h"
+#include "../Inc/menu.h"
+#include "../Inc/templates.h"
 
-#include "../Inc/cJSON.h"
-#include "../Inc/database.h"
-
-#include <sqlite3.h>
-
-/* API Params (Would be stored and executed on in AWS API Gateway or similar) */
-#define endpoint_hostname "https://api.themoviedb.org"
-#define endpoint_token "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkZDc3YmU2MTQyYjc3ZTNhZGQ5NGM0ZWY1ZTljZWQ0YyIsIm5iZiI6MTY2MTM2NTY1Mi40NzcsInN1YiI6IjYzMDY2ZDk0NmU5MzhhMDA3YmYwZjM3MCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.LHKyFJPtoVCM9meJ07IDoJsblgqB4ITu3v9qgIvA9Yo"
-#define api_path "/3"
-#define search_query "/search/movie?query="
-
-struct memory {
-	char *response;
-	size_t size;
-};
-
-
-static size_t cb(char *data, size_t size, size_t nmemb, void *clientp)
-{
-	size_t realsize = size * nmemb;
-	struct memory *mem = (struct memory *)clientp;
-
-	char *ptr = realloc(mem->response, mem->size + realsize + 1);
-	if (!ptr) {
-		return 0;
-	}
-
-	mem->response = ptr;
-	memcpy(&(mem->response[mem->size]), data, realsize);
-	mem->size += realsize;
-	mem->response[mem->size] = 0;
-	
-	return realsize;
-}
-
+char buf[2048];
 
 int main(int argc, char** argv)
 {
-	int result;
-	CURL *curl = curl_easy_init();
-	CURLcode res;
-	sqlite3 *db;
-	
-	struct memory chunk = {0};
-	char *sql = malloc(256 * sizeof(char));
-	result = sqlite3_open("test.db", &db);
-	
-	/* Would by dynamic from TUI interface */
-	const char *search_term = "Star Wars";
+	struct Result r;
+	struct winsize w;
+	struct menu_t *menu = &main_menu;
 
-	struct query_params *query = (struct query_params*)malloc(sizeof(struct query_params));
-	query->query = "Star Wars";
-	query->language = "en";
-	query->primary_release_year = NULL;
-	query->page = 1;
-	query->region = NULL;
-	query->year = NULL;
-	query->query_flags = NULL;
+	/* Initialization */
+	setlocale(LC_CTYPE, "");
+	signal(SIGINT, handle_signal);
+	set_noncanonical_mode();
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+	wprintf(HIDE_CURSOR);
 
+	wprintf(CLEAR_DISPLAY);
+	r = draw_module(menu, &w);
+	r = set_style(menu, &w);
 
-	struct query_response *response = (struct query_response*)malloc(sizeof(struct query_response));
-	response->result_index = 0;
-	response->params = query;
-
-	char *search_url = (char *)malloc(
-				sizeof(char) *
-				SEARCH_QUERY_MAX_LENGTH
-	);
-
-	query->query = curl_easy_escape(
-				curl,
-				query->query,
-				0
-	);
-
-	struct curl_slist *list = NULL;
-	
-	result = manage_results_cache_table(
-		db,
-		sql,
-		&(State){CREATE},
-		NULL
-	);
-
-	result = manage_results_cache_table(
-		db,
-		sql,
-		&(State){CREATE},
-		NULL
-	);
-
-	result = manage_search_cache_table(
-		db,
-		sql,
-		&(State){UPDATE},
-		query
-	);
-	
-
-	list = curl_slist_append(list, endpoint_token);
-	list = curl_slist_append(list, "Accept: application/json");
-
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-
-
-	/* Would be executed by Lambda or similar */
-	result = snprintf(
-			search_url,
-			SEARCH_QUERY_MAX_LENGTH,
-			"%s%s%s%s&page=%d",
-			endpoint_hostname,
-			api_path,
-			search_query,
-			query->query,
-			query->page
-	);
-
-	curl_easy_setopt(
-		curl,
-		CURLOPT_URL,
-		search_url
-	);
-
-	res = curl_easy_perform(curl);
-
-	if (res != CURLE_OK)
-		fprintf(stderr, "curl_easy_perform() failed: %s\n",
-		curl_easy_strerror(res));
-
-	cJSON *cJSON_handler;
-
-	cJSON *api_response = cJSON_Parse(chunk.response);
-	printf("%s\n", cJSON_Print(api_response));
-
-	cJSON_handler = cJSON_GetObjectItemCaseSensitive(api_response, "page");
-	/* Error handling ... */
-	response->page = cJSON_handler->valueint;
-	
-	cJSON_handler = cJSON_GetObjectItemCaseSensitive(api_response, "total_pages");
-	response->total_pages = cJSON_handler->valueint;
-
-	cJSON_handler = cJSON_GetObjectItemCaseSensitive(api_response, "total_results");
-	response->total_results = cJSON_handler->valueint;
-
-	/* Allocate memory */
-	response->results = (struct query_result**)malloc(sizeof(struct query_result*) * response->total_results);
-
-
-	const cJSON *api_results = cJSON_GetObjectItemCaseSensitive(api_response, "results");
-	const cJSON *api_result = NULL;
-
-	cJSON_ArrayForEach(api_result, api_results)
-	{
-		response->results[response->result_index] = (struct query_result*)malloc(sizeof(struct query_result));
-
-//		struct query_result *api_response = (struct query_result*)malloc(sizeof(struct query_result));
-
-
-		cJSON *backdrop_path = cJSON_GetObjectItemCaseSensitive(
-			api_result,
-			"backdrop_path"
-		);
-		response->results[response->result_index]->backdrop_path = backdrop_path->valuestring;
-	
-		printf("%s\n", response->results[response->result_index]->backdrop_path);	
-
-		result = manage_results_cache_table(
-			db,
-			sql,
-			&(State){UPDATE},
-			response
-		);
-//		result = manage_search_table(db, sql, &test, string);
-//		printf("%s\n", string);		
-		response->result_index++;
+	while(1) {
+		r = menu_switch(&menu, &w);
 	}
-/*
-	result = manage_search_table(
 
-			db,
-			sql,
-			&(State){DESTROY},
-			NULL
-	);
-
-*/
-
-//	cJSON *adult = cJSON_GetObjectItemCaseSensitive(json, "adult");
-//    	printf("Adult: %d\n", adult->type);
-
-
-
-
-	curl_easy_cleanup(curl);
-
-	
 	return 0;
+}
+
+/*
+		switch(ch) {
+			case UP_ARROW:
+				clear_style(active_menu, &w);
+				if (active_menu->size_y > w.ws_row && active_menu->cur_y >= w.ws_row) {
+					active_menu->cur_y--;
+					active_menu->item_offset--;
+				} else {
+					if (active_menu->cur_y == 1) {
+						active_menu->cur_y = active_menu->size_y;
+						if (active_menu->size_y > w.ws_row) {
+							active_menu->item_offset = active_menu->size_y - w.ws_row + 2;
+						} else {
+							active_menu->item_offset = 0;
+						}	
+					} else {
+						active_menu->cur_y--;
+						active_menu->item_offset = 0;
+					}
+				}
+
+				wprintf(L"\033[2J\033[H");
+				if (active_menu->type == FIELD) {
+					draw_field(active_menu);
+				} else {
+					draw_menu(active_menu);
+				}
+				set_style(active_menu, &w);
+				wprintf(L"\033[0m");
+				break;
+			case DOWN_ARROW:
+				if (active_menu->size_y > w.ws_row && active_menu->cur_y >= w.ws_row - 2 && active_menu->cur_y <= active_menu->size_y) {
+					clear_style(active_menu, &w);
+					if (active_menu->cur_y == active_menu->size_y) {
+						active_menu->item_offset = 0;
+						active_menu->cur_y = 1;
+					} else {
+						active_menu->cur_y++;
+						active_menu->item_offset++;
+					}
+
+					wprintf(L"\033[2J\033[H");
+					draw_field(active_menu);
+					set_style(active_menu, &w);
+					wprintf(L"\033[0m");
+				} else {
+					active_menu->item_offset = 0;
+					clear_style(active_menu, &w);
+					if (active_menu->cur_y == active_menu->size_y) {
+						active_menu->cur_y = 1;
+					} else {	
+						active_menu->cur_y++;
+					}
+					set_style(active_menu, &w);
+				}
+				break;	
+			case RIGHT_ARROW:
+				if (active_menu->type == MENU) {			
+					active_menu = active_menu->items[active_menu->cur_y - 1];
+				
+					wprintf(L"\033[0m");
+					wprintf(L"\033[2J\033[H");
+					
+					if (active_menu->type == MENU) {
+						draw_menu(active_menu);
+					} else if (active_menu->type == FIELD) {
+						draw_field(active_menu);
+					}
+
+					//	active_menu->cur_y = 1;
+					set_style(active_menu, &w);
+				}	
+				break;
+			case LEFT_ARROW:
+				if (active_menu->prev_menu != NULL) {	
+					active_menu = active_menu->prev_menu;
+
+					wprintf(L"\033[0m");
+					wprintf(L"\033[2J\033[H");
+
+					draw_menu(active_menu);
+					set_style(active_menu, &w);
+				}
+				break;
+			default:
+			//	wprintf(L"%ld\n", ch);
+				break;
+		}
+
+		fflush(stdout);
+	*/
+
+struct Result menu_r_arrow(struct menu_t **m, struct winsize *w)
+{
+	struct Result r;
+	struct column_t *cc = (*m)->cs[(*m)->cc];
+
+	switch(cc->rs[cc->tr]->type) {
+		case MENU:
+			wprintf(L"\033[2J\033[H");
+			*m = (struct menu_t *)(cc->rs[cc->tr]->data);
+			r = draw_module(*m, w);
+			set_style(*m, w);
+			break;
+
+//			r.data = (void*)malloc(sizeof(struct menu_t*));
+//			*(struct menu_t*)(r.data) = active_menu;
+		case FIELD:
+			break;
+		case PROMPT:
+			break;
+	}
+
+	r.rc = 0;
+
+
+	return r;
+}
+
+struct Result menu_l_arrow(struct menu_t **m, struct winsize *w)
+{
+	struct Result r;
+	struct column_t *cc = (*m)->cs[(*m)->cc];
+
+	if ((*m)->pm != NULL) {
+		wprintf(CLEAR_DISPLAY);
+		*m = (*m)->pm;
+		r = draw_module(*m, w);
+		r = set_style(*m, w);
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result menu_enter(struct menu_t **m, struct winsize *w)
+{
+	struct Result r;
+	struct column_t *cc = (*m)->cs[(*m)->cc];
+
+	switch(cc->rs[cc->tr]->type) {
+		case PROMPT:
+			// Want to avoid clearing screen completely
+			struct prompt_t *p = (struct prompt_t *)cc->rs[cc->tr]->data;
+			if (p->mode == TRAVERSE) {
+				//wprintf(L"\033[2J\033[H");
+				r = prompt_style(*m, w, ENTRY);
+			}
+			break;
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result init_prompt(struct menu_t *m, struct winsize *w)
+{
+	struct Result r;
+	struct column_t *cc = m->cs[m->cc];
+	struct prompt_t *p = (struct prompt_t *)cc->rs[cc->tr]->data;
+
+	int ypos;
+	if (cc->tr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
+	else ypos = cc->ry + cc->tr + 1;
+		
+	int offset = ((struct prompt_t *)(cc->rs[cc->tr]->data))->name_len + 1;
+	moveCursor(cc->rx + 2 + offset, ypos);
+
+	if (p->value == p->placeholder) {
+		wprintf(L"\033[0m%*s\033[0m\n", p->value_len, L" ");
+		moveCursor(cc->rx + 2 + offset, ypos);
+	} else {
+		moveCursor(cc->rx + 2 + offset + p->value_len, ypos);
+	}
+
+
+	wprintf(L"\033[47m \033[0m");
+
+	// Need conditional to check mem location that value is pointed at
+
+	r.rc = 0;
+	return r;
+}
+
+void moveCursor(int x, int y)
+{
+	wprintf(L"\033[%d;%dH", y, x);
+}
+
+void set_noncanonical_mode(void) {
+	struct termios term;
+	tcgetattr(STDIN_FILENO, &term);
+	term.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
+
+void handle_signal(int signal) {
+	if (signal == SIGINT) {
+		wprintf(L"\033[?25l");
+		wprintf(L"\033[2J\033[H");
+		wprintf(L"\033[?25h");
+	}
+
+	exit(0);
+}
+
+struct Result menu_switch(struct menu_t **m, struct winsize *w)
+{
+	struct Result r;
+	int c;
+
+	c = getchar();
+
+	switch(c) {
+		case RIGHT_ARROW:
+			r = menu_r_arrow(m, w);
+			break;
+		case LEFT_ARROW:
+			r = menu_l_arrow(m, w);
+			break;
+		case ENTER:
+			r = menu_enter(m, w);
+			break;
+	}
+
+	return r;
 }
