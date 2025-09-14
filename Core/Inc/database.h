@@ -8,7 +8,7 @@
 //#include "account.h"
 
 #define SEARCH_QUERY_MAX_LENGTH 128
-#define SQL_QUERY_MAX_LENGTH 256
+#define SQL_QUERY_MAX_LENGTH 2048
 
 typedef enum {
         CREATE,
@@ -16,16 +16,23 @@ typedef enum {
         DESTROY
 } State;
 
-int manage_search_cache_table(sqlite3*, char*, State*, const void*);
-int create_search_cache_table(sqlite3*, char*);
-int update_search_cache_table(sqlite3*, char*, const void*);
-int destroy_search_cache_table(sqlite3*, char*);
+typedef struct {
+	unsigned int rc;
+	char* msg;
+	void* data;
+} Result;
 
-int manage_results_cache_table(sqlite3*, char*, State*, const void*);
-int create_results_cache_table(sqlite3*, char*);
-int update_results_cache_table(sqlite3*, char*, const void*);
+Result manage_search_cache_table(sqlite3*, char*, State*, const void*);
+Result create_search_cache_table(sqlite3*, char*);
+Result update_search_cache_table(sqlite3*, char*, const void*);
+Result destroy_search_cache_table(sqlite3*, char*);
+
+Result manage_results_cache_table(sqlite3*, char*, State*, const void*);
+Result create_results_cache_table(sqlite3*, char*);
+Result update_results_cache_table(sqlite3*, char*, const void*);
 
 char* sanitize_input(const char*);
+
 
 struct query_result {
 	/*
@@ -33,27 +40,27 @@ struct query_result {
 	video
 	*/
 	char* backdrop_path;
-	int32_t* genre_ids;
-	int32_t id;
+	int* genre_ids;
+	int id;
 	char* original_language;
 	char* original_title;
 	char* overview;
-	float popularity;
+	double popularity;
 	char* poster_path;
 	char* release_date;
 	char* title;
-	float vote_average;
-	int32_t vote_count;
+	double vote_average;
+	int vote_count;
 	uint8_t* query_flags;
 };
 
 struct query_params {
 	char* query;
 	char* language;
-	char* primary_release_year;
+	int primary_release_year;
 	uint32_t page;
 	char* region;
-	char* year;
+	int year;
 
 	/*
 	bit 0 -> include_adult
@@ -73,6 +80,7 @@ struct query_response {
 	uint32_t total_pages;
 	uint32_t total_results;
 	uint32_t result_index;
+	int search_id;
 	struct query_params* params;
 	struct query_result** results;
 };
