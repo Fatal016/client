@@ -25,6 +25,9 @@ enum prompt_mode {
 struct row_t {
 	void *data;
 	enum row_type type;
+
+	int rx;
+	int ry;
 }; 
 
 struct prompt_t {

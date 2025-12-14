@@ -83,6 +83,8 @@ struct Result draw_column(struct column_t *c, struct winsize *w)
 		/* c->rx + 2 -> bump two from edge, one space off border */
 		/* c->ry + 1 + i -> bump from edge, no space */
 		moveCursor(c->rx + 2, c->ry + 1 + i);
+		c->rs[i]->rx = c->rx + 2;
+		c->rs[i]->ry = c->ry + 1 + i;
 		r = draw_row(c->rs[i], w);
 		if (r.rc != 0) return r;
 		if (*(int *)r.data > max_size) {
@@ -203,6 +205,7 @@ struct Result prompt_style(struct menu_t *m, struct winsize *w, enum prompt_mode
 			wprintf(L"\033[0m%*s\033[0m\n", p->name_len, p->name);
 			r = init_prompt(m, w);
 
+			prompt_style(m, w, TRAVERSE);
 			//moveCursor(cc->rx + 1 + offset, ypos);
 			//wprintf(L"\033[30;47m%*s\033[0m\n", p->name_len, p->name);
 			break;
@@ -278,6 +281,9 @@ if (menu->type == MENU) {
 	r.rc = 0;
 	return r;
 }
+
+/* Can clear any horizontal space to blank space before instantiating box */
+/* To avoid flickering */
 int draw_box(int sx, int sy, int rx, int ry) 
 {
 	wprintf(L"\033[%d;%dH", ry, rx);

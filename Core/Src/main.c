@@ -12,7 +12,7 @@
 #include "../Inc/menu.h"
 #include "../Inc/templates.h"
 
-char buf[2048];
+char buf[MAX_BUF];
 
 int main(int argc, char** argv)
 {
@@ -23,9 +23,13 @@ int main(int argc, char** argv)
 	/* Initialization */
 	setlocale(LC_CTYPE, "");
 	signal(SIGINT, handle_signal);
-	set_noncanonical_mode();
+	set_noncanonical_mode(0);
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-	wprintf(HIDE_CURSOR);
+//	printf(CURSOR_STYLE);
+//	printf(CURSOR_HIDE);
+	
+	// ANSI Mode?
+//	printf("\033[?1l");
 
 	wprintf(CLEAR_DISPLAY);
 	r = draw_module(menu, &w);
@@ -130,6 +134,19 @@ int main(int argc, char** argv)
 		fflush(stdout);
 	*/
 
+struct Result draw_next_menu(struct menu_t **m, struct winsize *w)
+{
+	struct Result r;
+	struct column_t *cc = (*m)->cs[(*m)->cc];
+
+	wprintf(CLEAR_DISPLAY);
+	*m = (struct menu_t *)(cc->rs[cc->tr]->data);
+	r = draw_module(*m, w);
+	set_style(*m, w);
+
+	return r;
+}
+
 struct Result menu_r_arrow(struct menu_t **m, struct winsize *w)
 {
 	struct Result r;
@@ -137,22 +154,12 @@ struct Result menu_r_arrow(struct menu_t **m, struct winsize *w)
 
 	switch(cc->rs[cc->tr]->type) {
 		case MENU:
-			wprintf(L"\033[2J\033[H");
-			*m = (struct menu_t *)(cc->rs[cc->tr]->data);
-			r = draw_module(*m, w);
-			set_style(*m, w);
-			break;
-
-//			r.data = (void*)malloc(sizeof(struct menu_t*));
-//			*(struct menu_t*)(r.data) = active_menu;
+			r = draw_next_menu(m, w);
 		case FIELD:
 			break;
 		case PROMPT:
 			break;
 	}
-
-	r.rc = 0;
-
 
 	return r;
 }
@@ -187,6 +194,8 @@ struct Result menu_enter(struct menu_t **m, struct winsize *w)
 				r = prompt_style(*m, w, ENTRY);
 			}
 			break;
+		case MENU:
+			r = draw_next_menu(m, w);
 	}
 
 	r.rc = 0;
@@ -202,6 +211,8 @@ struct Result init_prompt(struct menu_t *m, struct winsize *w)
 	int ypos;
 	if (cc->tr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->tr + 1;
+
+	int bp = 0;
 		
 	int offset = ((struct prompt_t *)(cc->rs[cc->tr]->data))->name_len + 1;
 	moveCursor(cc->rx + 2 + offset, ypos);
@@ -211,12 +222,102 @@ struct Result init_prompt(struct menu_t *m, struct winsize *w)
 		moveCursor(cc->rx + 2 + offset, ypos);
 	} else {
 		moveCursor(cc->rx + 2 + offset + p->value_len, ypos);
+		bp = p->value_len;
+	}
+	printf(CURSOR_SHOW);
+
+	int c;
+
+
+
+	while (bp < MAX_BUF) {
+		c = getchar();
+
+		switch (c) {
+			case ESCAPE:
+				c = getchar();
+				// '[' -> ANSI/VT100
+				// 'O' -> Application Mode
+				if (c == '[' || c == 'O') {
+					c = getchar();
+					if (c == 'C') {
+						if (bp < strlen(buf)) {
+							bp++;
+							wprintf(L"\033[1C");
+						}
+					} else if (c == 'D') {
+						if (bp > 0) {
+							bp--;
+
+							wprintf(L"\b");
+							continue;
+						}
+
+					}
+				}
+
+				break;
+			case ENTER:
+				buf[bp] = '\0';
+
+				p->value = (char *)malloc((strlen(buf) + 1) * sizeof(char));
+				strncpy(p->value, buf, strlen(buf) + 1);
+
+				p->value_len = strlen(buf);
+
+				r.rc = 0;
+				return r;
+			case BACKSPACE:
+				if (bp > 0) {
+					memmove(&buf[bp - 1], &buf[bp], strlen(buf) - bp + 1);
+					bp--;
+
+					wprintf(L"\033[D");
+					wprintf(L"\033[P");
+
+					continue;
+				}
+				break;
+			default:
+				if (c >= 32 && c <= 126) {
+					if (bp < strlen(buf)) {
+						memmove(&buf[bp + 1], &buf[bp], strlen(buf) - bp + 1);
+						wprintf(L"\033[@");
+					}
+
+					int x = strlen(buf);
+
+					buf[bp] = c;
+					bp++;
+
+					wprintf(L"%c", c);
+				}
+				break;
+		}
+
+		if (c == ENTER) break;
 	}
 
 
-	wprintf(L"\033[47m \033[0m");
 
-	// Need conditional to check mem location that value is pointed at
+	r.rc = 0;
+}
+
+struct Result prompt_switch(struct menu_t *m, struct winsize *w)
+{
+	struct Result r;
+	int c;
+
+	c = getchar();
+
+	switch(c) {
+		case ESCAPE:
+			break;
+		case ENTER:
+			break;
+		default:
+			break;
+	}
 
 	r.rc = 0;
 	return r;
@@ -227,10 +328,17 @@ void moveCursor(int x, int y)
 	wprintf(L"\033[%d;%dH", y, x);
 }
 
-void set_noncanonical_mode(void) {
+void set_noncanonical_mode(int echo)
+{
 	struct termios term;
+
 	tcgetattr(STDIN_FILENO, &term);
-	term.c_lflag &= ~(ICANON | ECHO);
+	term.c_lflag &= ~(ICANON);
+	if (echo) {
+		term.c_lflag |= ECHO;
+	} else {
+		term.c_lflag &= ~ECHO;
+	}
 	tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
@@ -262,6 +370,5 @@ struct Result menu_switch(struct menu_t **m, struct winsize *w)
 			r = menu_enter(m, w);
 			break;
 	}
-
 	return r;
 }
