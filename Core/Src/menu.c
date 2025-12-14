@@ -27,26 +27,27 @@ struct Result draw_field(struct field_t *f)
 {
 	struct Result r;
 
+	r.rc = 0;
 	return r;
 }
-
-// Will probably want global buffer for user input
 
 struct Result draw_prompt(struct prompt_t *p)
 {
 	struct Result r;
 
-	p->name_len = strlen(p->name);
-	p->value_len = 0;
+	if (p->mode == NULL) {
+		p->mode = TRAVERSE;
+	}
 
 	if (p->value == NULL) {
 		p->value = p->placeholder;
 	}
-// Will probably want global buffer for user input
-	wprintf(L"%s %s", p->name, p->value);
-	p->value_len = strlen(p->value);
 
+	p->name_len = strlen(p->name);
+	p->value_len = strlen(p->value);
 	p->len = p->name_len + p->value_len + 1;
+
+	wprintf(L"%s %s", p->name, p->value);
 
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
@@ -185,12 +186,12 @@ struct Result prompt_style(struct menu_t *m, struct winsize *w, enum prompt_mode
 {
 	struct Result r;
 	struct column_t *cc = m->cs[m->cc];
-	struct prompt_t *p = (struct prompt_t *)cc->rs[cc->tr]->data;
+	struct prompt_t *p = (struct prompt_t *)cc->rs[cc->cr]->data;
 
 
 	int ypos;
-	if (cc->tr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
-	else ypos = cc->ry + cc->tr + 1;
+	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
+	else ypos = cc->ry + cc->cr + 1;
 
 	switch (mode) {
 		case TRAVERSE:
@@ -206,6 +207,8 @@ struct Result prompt_style(struct menu_t *m, struct winsize *w, enum prompt_mode
 			r = init_prompt(m, w);
 
 			prompt_style(m, w, TRAVERSE);
+			r = draw_module(m, w);
+			r = set_style(m, w);
 			//moveCursor(cc->rx + 1 + offset, ypos);
 			//wprintf(L"\033[30;47m%*s\033[0m\n", p->name_len, p->name);
 			break;
@@ -229,16 +232,16 @@ struct Result set_style(struct menu_t *m, struct winsize *w)
 	struct Result r;
 	struct column_t *cc = m->cs[m->cc];
 
-	if (cc->tr > w->ws_row - 2) {
+	if (cc->cr > w->ws_row - 2) {
 		moveCursor(cc->rx + 1, cc->ry + w->ws_row - 2);
 	} else {
-		moveCursor(cc->rx + 2, cc->ry + cc->tr + 1);
+		moveCursor(cc->rx + 2, cc->ry + cc->cr + 1);
 	}
 
 
-	switch (cc->rs[cc->tr]->type) {
+	switch (cc->rs[cc->cr]->type) {
 		case MENU:
-			wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->tr]->data)->pn);
+			wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->cr]->data)->pn);
 			break;
 		case PROMPT:
 			r = prompt_style(m, w, (enum prompt_mode){ TRAVERSE });
