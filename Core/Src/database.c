@@ -26,7 +26,9 @@ Result create_search_cache_table(sqlite3 *db, char *sql) {
 	);
 
 	result = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+	if (result != SQLITE_OK) {}
 
+	r.rc = 0;
 	return r;
 }
 /*
@@ -166,13 +168,14 @@ Result create_results_cache_table(sqlite3 *db, char *sql)
 	);
 
 	result = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-//	if (result != SQLITE_OK) {
+	if (result != SQLITE_OK) {
 //		r.rc = result;
 		// Need to figure out sqlite_free for this and where to put
 //		r.msg = zErrMsg;
 //		return r;
-//	}	
+	}	
 
+	r.rc = 0;
 	return r;
 }
 
@@ -254,6 +257,7 @@ Result update_results_cache_table(sqlite3 *db, char *sql, const void *data)
 
 //	printf("SQL error: %s on %s\n", zErrMsg, (char *)data);
 
+	r.rc = 0;
 	return r;
 }
 
@@ -270,13 +274,15 @@ Result destroy_search_cache_table(sqlite3* db, char *sql)
 	);
 
 	result = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+	if (result != SQLITE_OK) {}
 
+	r.rc = 0;
 	return r;
 }
 
 char* sanitize_input(const char* input) {
 
-	int result;
+//	int result;
 
 	size_t len = strlen(input);
 	size_t extra = 0;
@@ -330,9 +336,8 @@ Result manage_search_cache_table(sqlite3 *db, char *sql, State *state, const voi
 Result manage_results_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
 {	
 	Result r;
-	int result;
 //	char debug_buffer[256];
-	char *zErrMsg;
+//	char *zErrMsg;
 
 //	if (state == NULL) return -1;
 
@@ -348,6 +353,7 @@ Result manage_results_cache_table(sqlite3 *db, char *sql, State *state, const vo
 			break;
 	}
 
+	r.rc = 0;
 	return r;
 }
 

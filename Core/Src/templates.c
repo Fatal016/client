@@ -1,28 +1,38 @@
-#include <wchar.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 #include "../Inc/menu.h"
 #include "../Inc/templates.h"
 
 struct column_t *search_menu_columns[] = {
-	&(struct column_t){
-		.rs = (struct row_t *[]){
-			&(struct row_t){
-				.data = &(struct prompt_t){
+	&(struct column_t) {
+		.rs = (struct row_t *[]) {
+			&(struct row_t) {
+				.data = &(struct prompt_t) {
 					.name = "Search:",
-					.placeholder = "<Search Movies>"
+					.placeholder = "<Search Movies>",
+					.buf_pos = 0
 					
 				},
 				.type = PROMPT
 			}
 		},
-		
-		.rx = 1,
-		.ry = 1,
+	
+		.rx_set = false,
+		.ry_set = false,
 
-		.sy = 1,
+		.sy_set = false,
+		.sx_set = false
+	},
+	&(struct column_t) {
 
-		.cgx = 1,
-		.cgy = 1
+		.rs = NULL,
+
+		.rx_set = false,
+		.ry_set = false,
+
+		.sy_set = false,
+		.sx_set = false
 	}
 };
 struct menu_t search_menu = {
@@ -38,8 +48,10 @@ struct menu_t search_menu = {
 	.rx = 1,
 	.ry = 1,
 
-	.sx = 1
+	.sx = 1,
 //	.sy = 1
+
+	.cp = SPLIT
 };
 
 struct column_t *main_menu_columns[] = {
@@ -50,14 +62,12 @@ struct column_t *main_menu_columns[] = {
 				.type = MENU
 			}
 		},
+		
+		.rx_set = false,
+		.ry_set = false,
 
-		.rx = 1,
-		.ry = 1,
-
-		.sy = 1,
-
-		.cgx = 1,
-		.cgy = 1
+		.sy_set = false,
+		.sx_set = false
 	}
 };
 struct menu_t main_menu = {

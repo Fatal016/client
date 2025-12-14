@@ -2,8 +2,8 @@
 #define H_MENU
 
 //#include "tui.h"
+#include <stdbool.h>
 #include <sys/ioctl.h>
-#include <wchar.h>
 
 struct Result {
         int rc;
@@ -22,6 +22,12 @@ enum prompt_mode {
 	ENTRY
 };
 
+enum column_profile {
+	MIN,
+	SPLIT,
+	MAX
+};
+
 struct row_t {
 	void *data;
 	enum row_type type;
@@ -36,6 +42,8 @@ struct prompt_t {
 	char *placeholder;
 
 	enum prompt_mode mode;
+	int buf_pos;
+
 
 	int name_len;
 	int value_len;
@@ -48,30 +56,33 @@ struct field_t {
 	int len;
 };
 
+
 struct column_t {
 
 	/* (r)ow(s) */
 	struct row_t **rs;
 
-	/* (t)arget (r)ow */
-	int tr;
+	/* (c)urrent (r)ow */
+	int cr;
+	bool cr_set;
 
 	/* MUST BE RELATIVE TO PARENT MENU */
 
 	/* (r)eference window position (x) */
 	int rx;
+	bool rx_set;
 
 	/* (r)eference window position (y) */
 	int ry;
+	bool ry_set;
 
-	/* current (g)rid (x) */
-	int cgx;
-
-	/* current (g)rid (y) */
-	int cgy;
+	/* (s)ize (x) */
+	int sx;
+	bool sx_set;
 	
 	/* (s)ize (y) */
 	int sy;
+	bool sy_set;
 };
 
 struct menu_t {
@@ -87,23 +98,33 @@ struct menu_t {
 
 	/* (n)um (c)olumns */
 	int nc;
+	bool nc_set;
 
 	/* (c)urrent (c)olumn */
 	int cc;
+	bool cc_set;
 	
 	/* (r)eference window position (x) */
 	int rx;
+	bool rx_set;
 
 	/* (r)eference window position (y) */
 	int ry;
+	bool ry_set;
 
 	/* (s)ize (x) */	
 	int sx;
+	bool sx_set;
+
+	/* (s)ize (y) */
+	int sy;
+	bool sy_set;
+
+	enum column_profile cp;
+	bool cp_set;
 
 	int len;
 };
-
-
 
 int max_size(struct menu_t*);
 

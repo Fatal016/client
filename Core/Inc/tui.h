@@ -35,6 +35,13 @@ struct Result menu_l_arrow(struct menu_t**, struct winsize*);
 struct Result prompt_switch(struct menu_t*, struct winsize*);
 struct Result init_prompt(struct menu_t*, struct winsize*);
 
+struct Result prompt_enter(struct menu_t*, struct winsize*);
+struct Result prompt_backspace(struct menu_t*, struct winsize*);
+struct Result prompt_escape(struct menu_t*, struct winsize*);
+struct Result prompt_char(struct menu_t*, struct winsize*, int*);
+struct Result prompt_r_arrow(struct menu_t**, struct winsize*);
+struct Result prompt_l_arrow(struct menu_t**, struct winsize*);
+
 struct Result draw_next_menu(struct menu_t**, struct winsize*);
 
 #endif

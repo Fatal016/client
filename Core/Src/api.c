@@ -283,6 +283,7 @@ int test(void)
 
 	curl_easy_cleanup(curl);
 
+	if (r.rc) {}
 	
 	return result;
 }
