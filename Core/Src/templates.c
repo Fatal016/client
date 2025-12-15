@@ -4,86 +4,65 @@
 #include "../Inc/menu.h"
 #include "../Inc/templates.h"
 
-struct column_t *search_menu_columns[] = {
-	&(struct column_t) {
-		.rs = (struct row_t *[]) {
-			&(struct row_t) {
-				.data = &(struct prompt_t) {
-					.name = "Search:",
-					.placeholder = "<Search Movies>",
-					.buf_pos = 0
-					
-				},
-				.type = PROMPT
-			}
-		},
-	
-		.rx_set = false,
-		.ry_set = false,
+struct column_t search_menu_search_column = {
+	ROWS (
+		&(struct row_t) {
+			.data = &(struct prompt_t) {
+				.name = "Search:",
+				.placeholder = "<Search Movies>",
+				.buf_pos = 0
+				
+			},
+			.type = PROMPT
+		}
+	),
 
-		.sy_set = false,
-		.sx_set = false
-	},
-	&(struct column_t) {
-
-		.rs = NULL,
-
-		.rx_set = false,
-		.ry_set = false,
-
-		.sy_set = false,
-		.sx_set = false
-	}
+	COLUMN_DEFAULTS
 };
+
+struct column_t search_menu_results_column = {
+	.rs = NULL,
+
+	COLUMN_DEFAULTS
+};
+
 struct menu_t search_menu = {
 
 	.pm = &main_menu,
 
 	.pn = "Search",
 
-	.cs = search_menu_columns,
-	.nc = 1,
-	.cc = 0,
+	COLS (
+		&search_menu_search_column,
+		&search_menu_results_column
+	),
 
-	.rx = 1,
-	.ry = 1,
-
-	.sx = 1,
-//	.sy = 1
-
-	.cp = SPLIT
+	MENU_DEFAULTS
 };
 
-struct column_t *main_menu_columns[] = {
-	&(struct column_t){
-		.rs = (struct row_t *[]){
-			&(struct row_t){
-				.data = &search_menu,
-				.type = MENU
-			}
-		},
-		
-		.rx_set = false,
-		.ry_set = false,
+struct column_t main_menu_navigation_column = {
+	ROWS (
+		&(struct row_t){
+			.data = &search_menu,
+			.type = MENU,
+			ROW_DEFAULTS
+		}
+	),
 
-		.sy_set = false,
-		.sx_set = false
-	}
+	COLUMN_DEFAULTS
 };
+
 struct menu_t main_menu = {
 
 	.pm = NULL,
 
 	.pn = NULL,
 
-	.cs = main_menu_columns,
-	.nc = 1,
-	.cc = 0,
+	COLS (
+		&main_menu_navigation_column
+	),
 
-	.rx = 1,
-	.ry = 1,
-
-	.sx = 1
+	MENU_DEFAULTS
 };
 
 

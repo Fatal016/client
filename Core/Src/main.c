@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 {
 	struct Result r;
 	struct winsize w;
-	struct menu_t *menu = &main_menu;
+	struct menu_t *menu = &search_menu;
 
 	/* Initialization */
 	setlocale(LC_CTYPE, "");
