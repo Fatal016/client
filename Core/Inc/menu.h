@@ -5,6 +5,14 @@
 #include <stdbool.h>
 #include <sys/ioctl.h>
 
+#define TOP_LEFT_CORNER 	0x250C
+#define TOP_RIGHT_CORNER	0x2510
+#define BOTTOM_LEFT_CORNER	0x2514
+#define BOTTOM_RIGHT_CORNER	0x2518
+
+#define VERTICAL_BAR		0x2502
+#define HORIZONTAL_BAR		0x2500
+
 struct Result {
         int rc;
         char* msg;
@@ -33,7 +41,10 @@ struct row_t {
 	enum row_type type;
 
 	int rx;
+	bool rx_set;
+
 	int ry;
+	bool ry_set;
 }; 
 
 struct prompt_t {
@@ -61,6 +72,9 @@ struct column_t {
 
 	/* (r)ow(s) */
 	struct row_t **rs;
+	
+	/* (n)um (r)ows */
+	size_t nr;
 
 	/* (c)urrent (r)ow */
 	int cr;
@@ -97,8 +111,7 @@ struct menu_t {
 	struct column_t **cs;
 
 	/* (n)um (c)olumns */
-	int nc;
-	bool nc_set;
+	size_t nc;
 
 	/* (c)urrent (c)olumn */
 	int cc;
@@ -131,6 +144,8 @@ int max_size(struct menu_t*);
 //int resize_menu(struct menu_t*);
 
 int draw_box(int, int, int, int);
+struct Result draw_vertical_bar(int, int, int);
+
 
 struct Result draw_module(struct menu_t*, struct winsize*);
 struct Result draw_column(struct column_t*, struct winsize*);
@@ -145,5 +160,11 @@ int clear_style(struct menu_t*, struct winsize*);
 
 struct Result prompt_style(struct menu_t*, struct winsize*, enum prompt_mode);
 struct Result set_style(struct menu_t*, struct winsize*);
+
+struct Result init_module(struct menu_t*, struct winsize*);
+struct Result scale_module(struct menu_t*, struct winsize*);
+
+struct Result draw_column_dividers(struct menu_t*);
+struct Result draw_dividers(struct menu_t*);
 
 #endif

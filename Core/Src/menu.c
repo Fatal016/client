@@ -80,9 +80,7 @@ struct Result draw_column(struct column_t *c, struct winsize *w)
 	struct Result r;
 	int max_size = 0;
 
-	for (int i = 0; i < c->sy; i++) {
-		/* c->rx + 2 -> bump two from edge, one space off border */
-		/* c->ry + 1 + i -> bump from edge, no space */
+	for (int i = 0; i < c->nr; i++) {
 		moveCursor(c->rx + 2, c->ry + 1 + i);
 		c->rs[i]->rx = c->rx + 2;
 		c->rs[i]->ry = c->ry + 1 + i;
@@ -97,15 +95,121 @@ struct Result draw_column(struct column_t *c, struct winsize *w)
 	return r;
 }
 
+struct Result init_module(struct menu_t *m, struct winsize *w)
+{
+	struct Result r;
+
+	if (!m->cc_set) {
+		m->cc = 0;
+		m->cc_set = true;
+	}
+
+	if (!m->rx_set) {
+		m->rx = 1;
+		m->rx_set = true;
+	}
+
+	if (!m->ry_set) {
+		m->ry = 1;
+		m->ry_set = true;
+	}
+
+	if (!m->cp_set && m->nc > 1) {
+		m->cp = SPLIT;
+		m->cp_set = true;
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result scale_module(struct menu_t *m, struct winsize *w)
+{
+	struct Result r;
+
+	m->sx = w->ws_col;
+	m->sy = w->ws_row;
+
+	switch(m->cp) {
+		case SPLIT:
+			for (int i = 0; i < m->nc; i++) {
+				m->cs[i]->rx = 1 + i * (m->sx / m->nc);
+				m->cs[i]->ry = 1;
+
+				m->cs[i]->sx = 2 + ((i + 1) * (m->sx / m->nc)) - m->cs[i]->rx;
+				if (m->cs[i]->rx + m->cs[i]->sx > m->sx) {
+					m->cs[i]->sx = m->sx - m->cs[i]->rx + 1;
+				}
+
+				m->cs[i]->sy = m->sy;
+			}
+			break;
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+
+struct Result draw_vertical_bar(int ys, int ye, int rx)
+{
+	struct Result r;
+
+	wprintf(L"\033[%d;%dH%lc", ys, rx, 0x252C);
+	for (int i = ys + 1; i < ye + 1 - 1; i++) {
+		wprintf(L"\033[%d;%dH%lc", i, rx, VERTICAL_BAR);
+	}
+	wprintf(L"\033[%d;%dH%lc", ye, rx, 0x2534);
+
+	r.rc = 0;
+	return r;
+}
+
+
+struct Result draw_column_dividers(struct menu_t *m)
+{
+	struct Result r;
+
+	if (m->nc < 2) return;
+
+	for (int i = 0; i < m->nc; i++) {
+		switch(m->cp) {
+			case SPLIT:
+				r = draw_vertical_bar(
+					m->cs[i]->ry,
+					m->sy,
+					m->cs[i]->sx
+				);
+				break;
+		}
+	}
+}
+
+struct Result draw_dividers(struct menu_t *m)
+{
+	struct Result r;
+
+	r = draw_column_dividers(m);
+
+	fflush(stdout);
+
+	r.rc = 0;
+	return r;
+}
+
+
 struct Result draw_module(struct menu_t *m, struct winsize *w)
 {
 	struct Result r;
 
+	r = init_module(m, w);
+	r = scale_module(m, w);
+
+	draw_box(m->sx, m->sy, m->rx, m->ry);
+
+	r = draw_dividers(m);
+
 	for (int i = 0; i < m->nc; i++) {
-		/* Column reference */
-		/* Just doing 1, 1 for now since multi-column is not present */
-		m->cs[i]->rx = 1;
-		m->cs[i]->ry = 1;
 		r = draw_column(m->cs[i], w);
 		if (r.rc != 0) return r;
 		if (*(int *)r.data > m->sx) {
@@ -113,7 +217,7 @@ struct Result draw_module(struct menu_t *m, struct winsize *w)
 		}
 	}
 
-	draw_box(m->sx, m->nc, m->rx, m->ry);
+
 
 	// Iterate over each column
 	// Set rx and ry index for each column and then exec draw col
@@ -292,31 +396,35 @@ int draw_box(int sx, int sy, int rx, int ry)
 	wprintf(L"\033[%d;%dH", ry, rx);
 
 	/* Upper bar */
-	wprintf(L"%lc", 0x250C);
-	for (int i = 0; i < sx + 2; i++) {
-		wprintf(L"%lc", 0x2500);
+	wprintf(L"%lc", TOP_LEFT_CORNER);
+	for (int i = 0; i < sx - 2; i++) {
+		wprintf(L"%lc", HORIZONTAL_BAR);
 	}
-	wprintf(L"%lc\n", 0x2510);
+	wprintf(L"%lc\n", TOP_RIGHT_CORNER);
 
 	/* Sides */
-	for (int i = 0; i < sy; i++) {
+	for (int i = 0; i < sy - 2; i++) {
+		/*
 		if (rx != 1) {
 			wprintf(L"\033[%dC", rx - 1);
 		}
-		wprintf(L"%lc\033[%dC%lc\n", 0x2502, sx + 2, 0x2502);
+		*/
+		wprintf(L"%lc\033[%dC%lc\n", VERTICAL_BAR, sx, VERTICAL_BAR);
 	}	
 
 	/* Lower Bar */
+	/*
 	if (rx != 1) {
 		wprintf(L"\033[%dC", rx - 1);
 	}
-	wprintf(L"%lc", 0x2514);
-	
-
-	for (int i = 0; i < sx + 2; i++) {
-		wprintf(L"%lc", 0x2500);
+	*/
+	wprintf(L"%lc", BOTTOM_LEFT_CORNER);
+	for (int i = 0; i < sx - 2; i++) {
+		wprintf(L"%lc", HORIZONTAL_BAR);
 	}
-	wprintf(L"%lc\n", 0x2518);
+	wprintf(L"%lc", BOTTOM_RIGHT_CORNER);
+
+	fflush(stdout);
 
 	return 0;
 }
