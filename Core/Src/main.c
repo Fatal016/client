@@ -216,11 +216,18 @@ struct Result prompt_char(struct menu_t *m, struct winsize *w, int *c)
 	return r;
 }
 
+
+
+
+
+
 struct Result init_prompt(struct menu_t *m, struct winsize *w)
 {
 	struct Result r;
 	struct column_t *cc = m->cs[m->cc];
 	struct prompt_t *p = (struct prompt_t *)cc->rs[cc->cr]->data;
+
+	draw_box_aware(m, cc->sx, p->height, cc->rx, cc->ry + cc->cr);
 
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
@@ -237,6 +244,9 @@ struct Result init_prompt(struct menu_t *m, struct winsize *w)
 		p->buf_pos = p->value_len;
 	}
 	printf(CURSOR_SHOW);
+
+
+
 
 	int c;
 
@@ -333,4 +343,77 @@ struct Result prompt_switch(struct menu_t *m, struct winsize *w)
 
 	r.rc = 0;
 	return r;
+}
+
+void clear_column(struct menu_t *m)
+{
+	struct column_t *cc = m->cs[m->cc];
+
+	for (int i = 0; i < cc->sy - 2; i++) {
+		wprintf(L"\033[%d;%dH", cc->ry + 1 + i, cc->rx + 1);
+		for (int j = 0; j < cc->sx - 2; j++)
+		    wprintf(L" ");
+	}
+}
+/*
+struct Result set_edge_vertical_bar(struct menu_t *m, int *rx, int *ry)
+{
+	struct column_t *cc = m->cs[m->cc];
+
+	if (m->cc > 0) {
+		struct column_t *pc = m->cs[m->cc-1];
+		for (int i = 0; i < pc->nr) {
+			switch (pc->rs[i]->type) {
+				case MENU:
+					break;
+				case FIELD:
+					break;
+
+				case PROMPT:
+				
+					break;
+			}
+		}
+	}
+
+	if (m->cc < m->nc - 1) {
+		
+	}
+
+}
+*/
+
+
+struct Result set_edge(struct menu_t *m, int ry, int c)
+{
+	struct Result r;
+
+	switch (c) {
+		case RIGHT_JUNCTION:
+			struct column_t *pc = m->cs[m->cc-1];
+
+			for (int i = 0; i < pc->nr; i++) {
+				struct row_t *pcr = pc->rs[i];
+				switch (pcr->type) {
+					case BREAK:
+						if (pcr->ry == ry) {
+							r.data = (char*)malloc(sizeof(char));
+							r.data = T_JUNCTION;
+						}
+				}
+			}
+			break;
+	}
+
+	if (r.data == NULL) {
+		r.data = (char*)malloc(sizeof(char));
+		r.data = c;
+	}
+
+	return r;
+	/*
+		case VERTICAL_BAR:
+			r = set_edge_vertical_bar(m, rx, ry);
+			break;
+	*/
 }
