@@ -10,10 +10,32 @@ struct column_t search_menu_search_column = {
 			.data = &(struct prompt_t) {
 				.name = "Search:",
 				.placeholder = "<Search Movies>",
-				.buf_pos = 0
+				.buf_pos = 0,
+				.height = 5
 				
 			},
 			.type = PROMPT
+		},
+		&(struct row_t) {
+			.data = &(struct prompt_t) {
+				.name = "Test:",
+				.placeholder = "<Placeholder>",
+				.buf_pos = 0,
+				.height = 5
+			},
+			.type = PROMPT
+		}
+	),
+
+	COLUMN_DEFAULTS,
+
+	.cr = 1
+};
+
+struct column_t search_menu_null_column = {
+	ROWS (
+		&(struct row_t) {
+			.type = BREAK
 		}
 	),
 
@@ -33,11 +55,15 @@ struct menu_t search_menu = {
 	.pn = "Search",
 
 	COLS (
+		&search_menu_null_column,
 		&search_menu_search_column,
 		&search_menu_results_column
 	),
 
-	MENU_DEFAULTS
+	MENU_DEFAULTS,
+
+	.cc = 1,
+	.cc_set = true
 };
 
 struct column_t main_menu_navigation_column = {

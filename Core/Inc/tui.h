@@ -44,4 +44,9 @@ struct Result prompt_l_arrow(struct menu_t**, struct winsize*);
 
 struct Result draw_next_menu(struct menu_t**, struct winsize*);
 
+void clear_column(struct menu_t*);
+
+struct Result set_edge_vertical_bar(struct menu_t*, int*, int*);
+struct Result set_edge(struct menu_t*, int, int);
+
 #endif

@@ -10,6 +10,12 @@
 #define BOTTOM_LEFT_CORNER	0x2514
 #define BOTTOM_RIGHT_CORNER	0x2518
 
+#define TOP_JUNCTION		0x252C
+#define BOTTOM_JUNCTION		0x2534
+#define LEFT_JUNCTION		0x2524
+#define RIGHT_JUNCTION		0x251C
+#define T_JUNCTION		0x253C
+
 #define VERTICAL_BAR		0x2502
 #define HORIZONTAL_BAR		0x2500
 
@@ -22,7 +28,13 @@ struct Result {
 enum row_type {
 	MENU,
 	FIELD,
-	PROMPT
+	PROMPT,
+	BREAK
+};
+
+enum side {
+	LEFT,
+	RIGHT
 };
 
 enum prompt_mode {
@@ -55,6 +67,7 @@ struct prompt_t {
 	enum prompt_mode mode;
 	int buf_pos;
 
+	int height;
 
 	int name_len;
 	int value_len;
@@ -143,13 +156,16 @@ int max_size(struct menu_t*);
 
 //int resize_menu(struct menu_t*);
 
-int draw_box(int, int, int, int);
+//struct Result draw_box(int, int, int, int);
+struct Result draw_box_general(int, int, int, int);
+struct Result draw_box_aware(struct menu_t*, int, int, int, int);
+
 struct Result draw_vertical_bar(int, int, int);
 
 
 struct Result draw_module(struct menu_t*, struct winsize*);
-struct Result draw_column(struct column_t*, struct winsize*);
-struct Result draw_row(struct row_t*, struct winsize*);
+struct Result draw_column(struct menu_t*, struct winsize*, int);
+struct Result draw_row(struct menu_t*, struct winsize*, int, int);
 
 struct Result draw_menu(struct menu_t*);
 struct Result draw_field(struct field_t*);
@@ -166,5 +182,7 @@ struct Result scale_module(struct menu_t*, struct winsize*);
 
 struct Result draw_column_dividers(struct menu_t*);
 struct Result draw_dividers(struct menu_t*);
+
+struct Result draw_horizontal_bar(int, int, int);
 
 #endif
