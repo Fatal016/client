@@ -20,6 +20,7 @@
 #define BLOCK L"\033[47m \033[0m"
 
 #include "menu.h"
+#include <stdint.h>
 #include <sys/ioctl.h>
 
 void moveCursor(int, int);
@@ -46,7 +47,12 @@ struct Result draw_next_menu(struct menu_t**, struct winsize*);
 
 void clear_column(struct menu_t*);
 
-struct Result set_edge_vertical_bar(struct menu_t*, int*, int*);
+struct Result set_edge_vertical_bar(struct menu_t*, int, int);
+struct Result set_edge_right_junction(struct menu_t*, int, int);
 struct Result set_edge(struct menu_t*, int, int);
+
+
+struct Result utf8_encode(uint32_t*, char[5]);
+//void print_utf8(uint32_t);
 
 #endif

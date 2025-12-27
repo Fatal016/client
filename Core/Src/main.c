@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <stdint.h>
 
 #include "../Inc/tui.h"
 #include "../Inc/menu.h"
@@ -31,7 +32,8 @@ int main(int argc, char** argv)
 	// ANSI Mode?
 //	printf("\033[?1l");
 
-	wprintf(CLEAR_DISPLAY);
+	printf(CLEAR_DISPLAY);
+//	wprintf(CLEAR_DISPLAY);
 	r = draw_module(menu, &w);
 	r = set_style(menu, &w);
 
@@ -66,6 +68,8 @@ struct Result menu_r_arrow(struct menu_t **m, struct winsize *w)
 		case FIELD:
 			break;
 		case PROMPT:
+			break;
+		default:
 			break;
 	}
 
@@ -104,6 +108,8 @@ struct Result menu_enter(struct menu_t **m, struct winsize *w)
 //			struct prompt_t *p = (struct prompt_t *)cr->data;
 			r = prompt_style(*m, w, ENTRY);
 			break;
+		default:
+			break;
 	}
 
 	r.rc = 0;
@@ -125,12 +131,39 @@ struct Result prompt_enter(struct menu_t *m, struct winsize *w)
 		strncpy(p->value, buf, strlen(buf) + 1);
 
 		p->value_len = strlen(buf);
+
+
+
+
+
 	} else {
 		if (p->value != p->placeholder) {
 			free(p->value);
 			p->value = NULL;
 		}
 	}
+
+	r = set_edge(
+		m,
+		cc->rs[cc->cr]->ry - 1,
+		VERTICAL_BAR
+	);
+	wprintf(L"\033[%d;%dH", cc->rs[cc->cr]->ry - 1, cc->rx);
+	//wprintf(L"%lc", *(wchar_t*)r.data);
+	//printf("%s", (char *)r.data);
+//	print_utf8(*(uint32_t*)r.data);
+
+
+	r = set_edge(
+		m,
+		cc->rs[cc->cr]->ry + ((struct prompt_t*)cc->rs[cc->cr]->data)->height,
+		VERTICAL_BAR
+	);
+//	wprintf(L"\033[%d;%dH", cc->rs[cc->cr]->ry + ((struct prompt_t*)cc->rs[cc->cr]->data)->height, cc->rx);
+//	wprintf(L"%lc", (wchar_t)r.data);
+
+	fflush(stdout);;
+
 
 	r.rc = 0;
 	return r;
@@ -384,30 +417,84 @@ struct Result set_edge_vertical_bar(struct menu_t *m, int *rx, int *ry)
 */
 
 
+struct Result set_edge_right_junction(struct menu_t *m, int ry, int c)
+{
+	struct Result r;
+	r.rc = 0;
+	r.msg = NULL;
+	r.data = NULL;
+
+	struct column_t *pc = m->cs[m->cc-1];
+	
+	for (int i = 0; i < pc->nr; i++) {
+		struct row_t *pcr = pc->rs[i];
+		switch (pcr->type) {
+			case BREAK:
+				if (pcr->ry == ry) {
+					r.data = malloc(sizeof(wchar_t));
+					*(wchar_t*)r.data = T_JUNCTION;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result set_edge_vertical_bar(struct menu_t *m, int ry, int c)
+{
+	struct Result r;
+	r.rc = 0;
+	r.msg = NULL;
+	r.data = NULL;
+
+	struct column_t *pc = m->cs[m->cc-1];
+	struct column_t *nc = m->cs[m->cc+1];
+
+	for (int i = 0; i < pc->nr; i++) {
+		struct row_t *pcr = pc->rs[i];
+		switch (pcr->type) {
+			case BREAK:
+				if (pcr->ry == ry) {
+							
+					r.data = (int*)malloc(sizeof(int));
+					*(int*)r.data = LEFT_JUNCTION;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	for (int i = 0; i < nc->nr; i++) {
+	//	struct row_t *ncr = nc->rs[i];
+	}
+
+	r.rc = 0;
+	return r;
+}
+
 struct Result set_edge(struct menu_t *m, int ry, int c)
 {
 	struct Result r;
+	r.rc = 0;
+	r.data = NULL;
+	r.msg = NULL;
 
 	switch (c) {
 		case RIGHT_JUNCTION:
-			struct column_t *pc = m->cs[m->cc-1];
-
-			for (int i = 0; i < pc->nr; i++) {
-				struct row_t *pcr = pc->rs[i];
-				switch (pcr->type) {
-					case BREAK:
-						if (pcr->ry == ry) {
-							r.data = (char*)malloc(sizeof(char));
-							r.data = T_JUNCTION;
-						}
-				}
-			}
+			r = set_edge_right_junction(m, ry, c);
+			break;
+		case VERTICAL_BAR:
+			r = set_edge_vertical_bar(m, ry, c);
 			break;
 	}
 
 	if (r.data == NULL) {
-		r.data = (char*)malloc(sizeof(char));
-		r.data = c;
+		r.data = (int*)malloc(sizeof(int));
+		*(int*)r.data = c;
 	}
 
 	return r;
@@ -415,5 +502,63 @@ struct Result set_edge(struct menu_t *m, int ry, int c)
 		case VERTICAL_BAR:
 			r = set_edge_vertical_bar(m, rx, ry);
 			break;
-	*/
+	*/}
+
+struct Result utf8_encode(uint32_t *cp, char out[5])
+{
+	struct Result r;
+
+	if (*cp <= 0x7F) {
+		out[0] = *cp;
+		out[1] = 0;
+	
+		r.rc = 1;
+		return r;
+	} else if (*cp <= 0x7FF) {
+		out[0] = 0xC0 | (*cp >> 6);
+		out[1] = 0x80 | (*cp & 0x3F);
+		out[2] = 0;
+		
+		r.rc = 2;
+		return r;
+	} else if (*cp <= 0xFFFF) {
+		out[0] = 0xE0 | (*cp >> 12);
+		out[1] = 0x80 | ((*cp >> 6) & 0x3F);
+		out[2] = 0x80 | (*cp & 0x3F);
+		out[3] = 0;
+
+		r.rc = 3;
+		return r;
+	} else if (*cp <= 0x10FFFF) {
+		out[0] = 0xF0 | (*cp >> 18);
+		out[1] = 0x80 | ((*cp >> 12) & 0x3F);
+		out[2] = 0x80 | ((*cp >> 6) & 0x3F);
+		out[3] = 0x80 | (*cp & 0x3F);
+		out[4] = 0;
+		
+		r.rc = 4;
+		return r;
+	}
+
+	r.rc = 0;
+	return r;
 }
+/*
+void print_utf8(uint32_t cp) {
+    if (cp <= 0x7F) {
+        putchar(cp);
+    } else if (cp <= 0x7FF) {
+        putchar(0xC0 | (cp >> 6));
+        putchar(0x80 | (cp & 0x3F));
+    } else if (cp <= 0xFFFF) {
+        putchar(0xE0 | (cp >> 12));
+        putchar(0x80 | ((cp >> 6) & 0x3F));
+        putchar(0x80 | (cp & 0x3F));
+    } else if (cp <= 0x10FFFF) {
+        putchar(0xF0 | (cp >> 18));
+        putchar(0x80 | ((cp >> 12) & 0x3F));
+        putchar(0x80 | ((cp >> 6) & 0x3F));
+        putchar(0x80 | (cp & 0x3F));
+    }
+}
+*/
