@@ -152,6 +152,8 @@ struct Result scale_module(struct menu_t *m, struct winsize *w)
 				m->cs[i]->sy = m->sy;
 			}
 			break;
+		default:
+			break;
 	}
 
 	r.rc = 0;
@@ -203,6 +205,8 @@ struct Result draw_column_dividers(struct menu_t *m)
 					m->sy,
 					m->cs[i]->rx
 				);
+				break;
+			default:
 				break;
 		}
 	}
@@ -385,6 +389,8 @@ struct Result set_style(struct menu_t *m, struct winsize *w)
 	//		wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->tr]->data)->pn);
 		case FIELD:
 			break;
+		default:
+			break;
 	}
 
 /*
@@ -431,14 +437,14 @@ struct Result draw_box_aware(struct menu_t *m, int sx, int sy, int rx, int ry)
 	wprintf(L"\033[%d;%dH", ry, rx);
 
 	if (m->cc == 0) {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 
 			wprintf(L"%lc", TOP_LEFT_CORNER);
 		} else {
 			wprintf(L"%lc", RIGHT_JUNCTION);
 		}
 	} else {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 			wprintf(L"%lc", TOP_JUNCTION);
 		} else {
 			r = set_edge(
@@ -446,22 +452,26 @@ struct Result draw_box_aware(struct menu_t *m, int sx, int sy, int rx, int ry)
 				ry,
 				RIGHT_JUNCTION
 			);
-			wprintf(L"%lc", r.data);
+			
+			char buf[5];
+			r = utf8_encode((uint32_t*)r.data, buf);
+
+			printf("%s", buf);
 		}
 	}
-	
+/*	
 	for (int i = 0; i < sx - 2; i++) {
 		wprintf(L"%lc", HORIZONTAL_BAR);
 	}
 
 	if (m->cc == m->nc - 1) {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 			wprintf(L"%lc", TOP_RIGHT_CORNER);
 		} else {
 			wprintf(L"%lc", LEFT_JUNCTION);
 		}
 	} else {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 			wprintf(L"%lc", TOP_JUNCTION);
 		} else {
 			wprintf(L"%lc", LEFT_JUNCTION);
@@ -492,19 +502,19 @@ struct Result draw_box_aware(struct menu_t *m, int sx, int sy, int rx, int ry)
 	}
 
 	if (m->cc == m->nc - 1) {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 			wprintf(L"%lc", BOTTOM_RIGHT_CORNER);
 		} else {
 			wprintf(L"%lc", LEFT_JUNCTION);
 		}
 	} else {
-		if (cr->ry = 0) {
+		if (cr->ry == 0) {
 			wprintf(L"%lc", BOTTOM_JUNCTION);
 		} else {
 			wprintf(L"%lc", LEFT_JUNCTION);
 		}
 	}
-	
+*/	
 	fflush(stdout);
 
 	r.rc = 0;

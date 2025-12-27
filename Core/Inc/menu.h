@@ -65,7 +65,7 @@ struct prompt_t {
 	char *placeholder;
 
 	enum prompt_mode mode;
-	int buf_pos;
+	size_t buf_pos;
 
 	int height;
 
@@ -87,7 +87,7 @@ struct column_t {
 	struct row_t **rs;
 	
 	/* (n)um (r)ows */
-	size_t nr;
+	int nr;
 
 	/* (c)urrent (r)ow */
 	int cr;
@@ -124,7 +124,7 @@ struct menu_t {
 	struct column_t **cs;
 
 	/* (n)um (c)olumns */
-	size_t nc;
+	int nc;
 
 	/* (c)urrent (c)olumn */
 	int cc;
