@@ -4,10 +4,10 @@
 #include "../Inc/menu.h"
 #include "../Inc/templates.h"
 
-struct column_t search_menu_search_column = {
+struct column search_menu_search_column = {
 	ROWS (
-		&(struct row_t) {
-			.data = &(struct prompt_t) {
+		&(struct row) {
+			.data = &(struct prompt) {
 				.name = "Search:",
 				.placeholder = "<Search Movies>",
 				.buf_pos = 0,
@@ -16,8 +16,8 @@ struct column_t search_menu_search_column = {
 			},
 			.type = PROMPT
 		},
-		&(struct row_t) {
-			.data = &(struct prompt_t) {
+		&(struct row) {
+			.data = &(struct prompt) {
 				.name = "Test:",
 				.placeholder = "<Placeholder>",
 				.buf_pos = 0,
@@ -32,9 +32,9 @@ struct column_t search_menu_search_column = {
 	.cr = 1
 };
 
-struct column_t search_menu_null_column = {
+struct column search_menu_null_column = {
 	ROWS (
-		&(struct row_t) {
+		&(struct row) {
 			.type = BREAK
 		}
 	),
@@ -42,13 +42,13 @@ struct column_t search_menu_null_column = {
 	COLUMN_DEFAULTS
 };
 
-struct column_t search_menu_results_column = {
+struct column search_menu_results_column = {
 	.rs = NULL,
 
 	COLUMN_DEFAULTS
 };
 
-struct menu_t search_menu = {
+struct menu search_menu = {
 
 	.pm = &main_menu,
 
@@ -66,9 +66,9 @@ struct menu_t search_menu = {
 	.cc_set = true
 };
 
-struct column_t main_menu_navigation_column = {
+struct column main_menu_navigation_column = {
 	ROWS (
-		&(struct row_t){
+		&(struct row){
 			.data = &search_menu,
 			.type = MENU,
 			ROW_DEFAULTS
@@ -78,7 +78,7 @@ struct column_t main_menu_navigation_column = {
 	COLUMN_DEFAULTS
 };
 
-struct menu_t main_menu = {
+struct menu main_menu = {
 
 	.pm = NULL,
 

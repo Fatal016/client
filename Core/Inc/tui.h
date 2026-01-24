@@ -11,48 +11,93 @@
 
 #define MAX_BUF		2048
 
-#define CLEAR_DISPLAY L"\033[2J\033[H"
+#define CLEAR_DISPLAY "\033[2J\033[H"
 
 #define CURSOR_STYLE "\033[2 q"
 #define CURSOR_SHOW "\033[?25h"
 #define CURSOR_HIDE "\033[?25l"
 
-#define BLOCK L"\033[47m \033[0m"
+#define BLOCK "\033[47m \033[0m"
 
 #include "menu.h"
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include "style.h"
 
-void moveCursor(int, int);
+
+void move(int, int);
 void set_noncanonical_mode(int);
 
 void handle_signal(int);
 
-struct Result menu_switch(struct menu_t**, struct winsize*);
-struct Result menu_enter(struct menu_t**, struct winsize*);
-struct Result menu_r_arrow(struct menu_t**, struct winsize*);
-struct Result menu_l_arrow(struct menu_t**, struct winsize*);
+struct Result menu_switch(
+	struct menu **menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result menu_r_arrow(
+	struct menu **menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result menu_l_arrow(
+	struct menu **menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result menu_enter(
+	struct menu **menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
 
-struct Result prompt_switch(struct menu_t*, struct winsize*);
-struct Result init_prompt(struct menu_t*, struct winsize*);
+struct Result prompt_switch(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result prompt_r_arrow(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result prompt_l_arrow(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result prompt_enter(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result prompt_backspace(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
+struct Result prompt_escape(
+	struct menu *menu,
+	const struct winsize *winsize,
+	const struct style *style
+);
 
-struct Result prompt_enter(struct menu_t*, struct winsize*);
-struct Result prompt_backspace(struct menu_t*, struct winsize*);
-struct Result prompt_escape(struct menu_t*, struct winsize*);
-struct Result prompt_char(struct menu_t*, struct winsize*, int*);
-struct Result prompt_r_arrow(struct menu_t**, struct winsize*);
-struct Result prompt_l_arrow(struct menu_t**, struct winsize*);
 
-struct Result draw_next_menu(struct menu_t**, struct winsize*);
+struct Result init_prompt(struct menu*, struct winsize*, struct style *s);
 
-void clear_column(struct menu_t*);
+struct Result prompt_char(struct menu*, struct winsize*, int*);
 
-struct Result set_edge_vertical_bar(struct menu_t*, int, int);
-struct Result set_edge_right_junction(struct menu_t*, int, int);
-struct Result set_edge(struct menu_t*, int, int);
+struct Result draw_next_menu(struct menu**, struct winsize*);
+
+void clear_column(struct menu*);
+
+struct Result set_edge_vertical_bar(struct menu*, struct style *, int*);
+struct Result set_edge_right_junction(struct menu*, struct style *, int);
+struct Result set_edge(struct menu*, struct style *, int, const char *);
 
 
-struct Result utf8_encode(uint32_t*, char[5]);
+struct Result utf8_encode(uint32_t, char*);
+uint32_t utf8_decode(const char *c);
 //void print_utf8(uint32_t);
 
 #endif
