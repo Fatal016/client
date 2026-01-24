@@ -5,9 +5,59 @@
 
 #include "../Inc/database.h"
 
-Result create_search_cache_table(sqlite3 *db, char *sql) {
+struct Result manage_search_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
+{	
+	struct Result r;
+/*
+	if (state == NULL) {
+		r.rc = NULL_STATE;
+		r.msg = "State: NULL. ";
+		return r;
+	}
+*/
+	switch(*state) {
+		case CREATE:
+			r = create_search_cache_table(db, sql);
+			break;
+		case UPDATE:
+			r = create_search_cache_table(db, sql);
+			r = update_search_cache_table(db, sql, data);
+			break;
+		case DESTROY:
+			r = destroy_search_cache_table(db, sql);
+			break;
+	}
 
-	Result r;	
+	return r;
+}
+
+struct Result manage_results_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
+{	
+	struct Result r;
+//	char debug_buffer[256];
+//	char *zErrMsg;
+
+//	if (state == NULL) return -1;
+
+	switch(*state) {
+		case CREATE:
+			r = create_results_cache_table(db, sql);
+			break;
+		case UPDATE:
+			r = create_results_cache_table(db, sql);
+			r = update_results_cache_table(db, sql, data);
+			break;
+		case DESTROY:
+			break;
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result create_search_cache_table(sqlite3 *db, char *sql) {
+
+	struct Result r;	
 	int result;
 	char *zErrMsg;
 
@@ -32,9 +82,9 @@ Result create_search_cache_table(sqlite3 *db, char *sql) {
 	return r;
 }
 /*
-Result query_search_cache_table(sqlite3 *db, char *sql, const void *data)
+struct Result query_search_cache_table(sqlite3 *db, char *sql, const void *data)
 {
-	Result r;
+	struct Result r;
 data;
 
 	result = snprintf(sql, SQL_QUERY_MAX_LENGTH,
@@ -42,9 +92,9 @@ data;
 	)
 }
 */
-Result update_search_cache_table(sqlite3 *db, char *sql, const void *data)
+struct Result update_search_cache_table(sqlite3 *db, char *sql, const void *data)
 {
-	Result r;
+	struct Result r;
 	int result;
 	char *zErrMsg;
 	sqlite3_stmt *stmt;
@@ -126,7 +176,7 @@ Result update_search_cache_table(sqlite3 *db, char *sql, const void *data)
 //	}	
 
 	result = sqlite3_column_int(stmt, 0);
-	printf("Result: %d\n", result);
+	printf("struct Result: %d\n", result);
 
 	r.rc = 0;
 	r.data = (void*)malloc(sizeof(int));
@@ -135,9 +185,9 @@ Result update_search_cache_table(sqlite3 *db, char *sql, const void *data)
 	return r;
 }
 
-Result create_results_cache_table(sqlite3 *db, char *sql)
+struct Result create_results_cache_table(sqlite3 *db, char *sql)
 {
-	Result r;
+	struct Result r;
 	int result;
 //	char debug_buffer[256];
 	char *zErrMsg;
@@ -183,9 +233,9 @@ Result create_results_cache_table(sqlite3 *db, char *sql)
 // Short cache time
 
 
-Result update_results_cache_table(sqlite3 *db, char *sql, const void *data)
+struct Result update_results_cache_table(sqlite3 *db, char *sql, const void *data)
 {
-	Result r;
+	struct Result r;
 	int rc;
 	char *zErrMsg;
 
@@ -261,9 +311,9 @@ Result update_results_cache_table(sqlite3 *db, char *sql, const void *data)
 	return r;
 }
 
-Result destroy_search_cache_table(sqlite3* db, char *sql)
+struct Result destroy_search_cache_table(sqlite3* db, char *sql)
 {
-	Result r;
+	struct Result r;
 	int result;
 //	char debug_buffer[256];
 	char *zErrMsg;
@@ -307,55 +357,6 @@ char* sanitize_input(const char* input) {
 	return output;
 }
 
-Result manage_search_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
-{	
-	Result r;
-/*
-	if (state == NULL) {
-		r.rc = NULL_STATE;
-		r.msg = "State: NULL. ";
-		return r;
-	}
-*/
-	switch(*state) {
-		case CREATE:
-			r = create_search_cache_table(db, sql);
-			break;
-		case UPDATE:
-			r = create_search_cache_table(db, sql);
-			r = update_search_cache_table(db, sql, data);
-			break;
-		case DESTROY:
-			r = destroy_search_cache_table(db, sql);
-			break;
-	}
-
-	return r;
-}
-
-Result manage_results_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
-{	
-	Result r;
-//	char debug_buffer[256];
-//	char *zErrMsg;
-
-//	if (state == NULL) return -1;
-
-	switch(*state) {
-		case CREATE:
-			r = create_results_cache_table(db, sql);
-			break;
-		case UPDATE:
-			r = create_results_cache_table(db, sql);
-			r = update_results_cache_table(db, sql, data);
-			break;
-		case DESTROY:
-			break;
-	}
-
-	r.rc = 0;
-	return r;
-}
 
 int callback(void *data, int argc, char **argv, char **azColName) {
 

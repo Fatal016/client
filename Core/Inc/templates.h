@@ -4,12 +4,12 @@
 #include "menu.h"
 
 #define ROWS(...) \
-.rs = (struct row_t *[]) { __VA_ARGS__ }, \
-.nr = sizeof((struct row_t *[]) { __VA_ARGS__ }) / sizeof(struct row_t *)
+.rs = (struct row *[]) { __VA_ARGS__ }, \
+.nr = sizeof((struct row *[]) { __VA_ARGS__ }) / sizeof(struct row *)
 
 #define COLS(...) \
-.cs = (struct column_t *[]) { __VA_ARGS__ }, \
-.nc = sizeof((struct column_t *[]) { __VA_ARGS__ }) / sizeof(struct column_t *)
+.cs = (struct column *[]) { __VA_ARGS__ }, \
+.nc = sizeof((struct column *[]) { __VA_ARGS__ }) / sizeof(struct column *)
 
 #define ROW_DEFAULTS		\
 	.rx_set = false, 	\
@@ -29,12 +29,12 @@
 	.sy_set = false,	\
 	.cp_set = false
 
-extern struct column_t search_menu_search_column;
-extern struct column_t search_menu_results_column;
-extern struct menu_t search_menu;
+extern struct column search_menu_search_column;
+extern struct column search_menu_results_column;
+extern struct menu search_menu;
 
-extern struct column_t main_menu_navigation_column;
-extern struct menu_t main_menu;
+extern struct column main_menu_navigation_column;
+extern struct menu main_menu;
 
 //extern struct menu_t category_menu;
 //extern struct menu_t *category_menu_items[];

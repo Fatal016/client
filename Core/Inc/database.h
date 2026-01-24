@@ -16,20 +16,26 @@ typedef enum {
         DESTROY
 } State;
 
-typedef struct {
-	unsigned int rc;
+struct Result {
+	int rc;
 	char* msg;
 	void* data;
-} Result;
+};
 
-Result manage_search_cache_table(sqlite3*, char*, State*, const void*);
-Result create_search_cache_table(sqlite3*, char*);
-Result update_search_cache_table(sqlite3*, char*, const void*);
-Result destroy_search_cache_table(sqlite3*, char*);
+struct Result manage_search_cache_table(sqlite3*, char*, State*, const void*);
+struct Result create_search_cache_table(sqlite3*, char*);
+struct Result update_search_cache_table(sqlite3*, char*, const void*);
+struct Result destroy_search_cache_table(sqlite3*, char*);
 
-Result manage_results_cache_table(sqlite3*, char*, State*, const void*);
-Result create_results_cache_table(sqlite3*, char*);
-Result update_results_cache_table(sqlite3*, char*, const void*);
+struct Result manage_results_cache_table(sqlite3*, char*, State*, const void*);
+struct Result create_results_cache_table(sqlite3*, char*);
+struct Result update_results_cache_table(sqlite3*, char*, const void*);
+
+struct Result manage_config_table(sqlite3*, char*, State*, const void*);
+struct Result create_config_table(sqlite3*, char*);
+struct Result update_config_table(sqlite3*, char*, const void*);
+struct Result query_config_table(sqlite3*, char*, char*);
+struct Result destroy_config_table(sqlite3*, char*);
 
 char* sanitize_input(const char*);
 
@@ -86,16 +92,6 @@ struct query_response {
 };
 
 
-
-//int create_sensor_table(sqlite3*, char*, struct sensor_info*);
-//int create_sensor_entry(sqlite3*, char*, struct sensor_info*);
-//int update_sensor_table(struct sensor_info*);
-//int query_sensor_table(struct sensor_info*, char*);
-
-//int create_account_table(sqlite3*, char*);
-//int create_account_entry(sqlite3*, char*, struct user_info*);
-//int update_account_table(struct user_info*);
-//int query_account_table(struct sensor_info*, char*, char*);
 
 int callback(void*, int, char**, char**);
 

@@ -48,7 +48,7 @@ int test(void)
 	CURLcode res;
 	sqlite3 *db;
 	
-	Result r, r_sc;
+	struct Result r, r_sc;
 
 	struct memory chunk = {0};
 	char *sql = malloc(SQL_QUERY_MAX_LENGTH * sizeof(char));
