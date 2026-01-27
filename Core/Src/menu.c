@@ -127,6 +127,7 @@ struct Result init_module(struct menu *m, struct winsize *w)
 		m->cp = SPLIT;
 		m->cp_set = true;
 	}
+	
 
 	r.rc = 0;
 	return r;
@@ -235,12 +236,26 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
-	r = init_module(m, w);
-	r = scale_module(m, w);
+	if (!m->pending_init) {
+		r = init_module(m, w);
+		m->pending_init = true;
+	}
 
-	draw_box_general(m->sx, m->sy, m->rx, m->ry, s);
+	if (!m->pending_scale) {
+		r = scale_module(m, w);
+		m->pending_scale = true;
+	}
 
-	r = draw_dividers(m, s);
+	if (!m->pending_box) {
+		draw_box_general(m->sx, m->sy, m->rx, m->ry, s);
+		m->pending_box = true;
+	}
+
+	if (!m->pending_dividers) {
+		r = draw_dividers(m, s);
+		m->pending_dividers = true;
+	}
+
 
 	for (int i = 0; i < m->nc; i++) {
 		r = draw_column(m, w, s, i);
@@ -324,7 +339,6 @@ struct Result prompt_style(struct menu *m,
 	struct column *cc = m->cs[m->cc];
 	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
 
-
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
@@ -348,12 +362,12 @@ struct Result prompt_style(struct menu *m,
 			r = init_prompt(m, w, s);
 
 
-//			wprintf(CLEAR_DISPLAY);
-//			prompt_style(m, w, s, TRAVERSE);
-//			r = draw_module(m, w);
+			wprintf(CLEAR_DISPLAY);
+			prompt_style(m, w, s, TRAVERSE);
+			r = draw_module(m, w, s);
 
-//			clear_column(m);
-//			r = set_style(m, w, s);
+			clear_column(m);
+			r = set_style(m, w, s);
 			//moveCursor(cc->rx + 1 + offset, ypos);
 			//wprintf(L"\033[30;47m%*s\033[0m\n", p->name_len, p->name);
 			break;
@@ -402,7 +416,7 @@ struct Result set_style(struct menu *m, struct winsize *w, struct style *s)
 				w,
 				s,
 				(enum prompt_mode){ TRAVERSE }
-			);
+			); // update once done testing
 //			wprintf(L"\033[30;47m%*s\033[0m\n", )
 
 	//		wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->tr]->data)->pn);

@@ -32,54 +32,54 @@ void handle_signal(int);
 
 struct Result menu_switch(
 	struct menu **menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result menu_r_arrow(
 	struct menu **menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result menu_l_arrow(
 	struct menu **menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result menu_enter(
 	struct menu **menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 
 struct Result prompt_switch(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result prompt_r_arrow(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result prompt_l_arrow(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result prompt_enter(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result prompt_backspace(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 struct Result prompt_escape(
 	struct menu *menu,
-	const struct winsize *winsize,
-	const struct style *style
+	struct winsize *winsize,
+	struct style *style
 );
 
 
@@ -87,7 +87,7 @@ struct Result init_prompt(struct menu*, struct winsize*, struct style *s);
 
 struct Result prompt_char(struct menu*, struct winsize*, int*);
 
-struct Result draw_next_menu(struct menu**, struct winsize*);
+struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
 void clear_column(struct menu*);
 
