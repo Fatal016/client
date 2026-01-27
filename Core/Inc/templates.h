@@ -13,7 +13,8 @@
 
 #define ROW_DEFAULTS		\
 	.rx_set = false, 	\
-	.ry_set = false
+	.ry_set = false,	\
+	.height_set = false
 
 #define COLUMN_DEFAULTS		\
 	.rx_set = false, 	\

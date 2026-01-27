@@ -36,6 +36,11 @@ enum column_profile {
 	MAX
 };
 
+struct pending {
+	bool init;
+	bool scale;
+};
+
 struct row {
 	void *data;
 	enum row_type type;
@@ -45,6 +50,9 @@ struct row {
 
 	int ry;
 	bool ry_set;
+
+	int height;
+	int height_set;
 }; 
 
 struct prompt {
@@ -55,7 +63,11 @@ struct prompt {
 	enum prompt_mode mode;
 	size_t buf_pos;
 
+	int cr;
+	int cr_set;
+
 	int height;
+	int height_set;
 
 	int name_len;
 	int value_len;
@@ -138,6 +150,11 @@ struct menu {
 	bool cp_set;
 
 	int len;
+
+	bool pending_init;
+	bool pending_scale;
+	bool pending_box;
+	bool pending_dividers;
 };
 
 int max_size(struct menu*);
