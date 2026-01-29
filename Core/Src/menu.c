@@ -75,7 +75,7 @@ struct Result draw_row(struct menu *m, struct winsize *w, struct style *s, int t
 			r = draw_prompt((struct prompt *)cr->data, s);
 			break;
 		case BREAK:
-			r = draw_horizontal_bar(cc->rx, cc->sx, cr->ry, s);
+			r = draw_horizontal_bar(cc->rx, cc->rx + cc->sx - 1, cr->ry, s);
 	}
 
 	return r;
@@ -163,11 +163,14 @@ struct Result scale_module(struct menu *m, struct winsize *w)
 	return r;
 }
 
-struct Result draw_horizontal_bar(int xs, int xe, int ry, struct style *s)
+struct Result draw_horizontal_bar(struct menu *m, struct style *s, int ry)
 {
 	struct Result r;
 
-	printf("\033[%d;%dH%s", ry, xs, s->border->right_junction);
+	r = set_edge(m, s, ry, s->border->right_junction);
+
+
+//	printf("\033[%d;%dH%s", ry, xs, s->border->right_junction);
 	for (int i = xs + 1; i < xe; i++) {
 		printf("\033[%d;%dH%s", ry, i, s->border->horizontal);
 	}
@@ -362,7 +365,7 @@ struct Result prompt_style(struct menu *m,
 			r = init_prompt(m, w, s);
 
 
-			wprintf(CLEAR_DISPLAY);
+			printf(CLEAR_DISPLAY);
 			prompt_style(m, w, s, TRAVERSE);
 			r = draw_module(m, w, s);
 
@@ -471,83 +474,29 @@ struct Result draw_box_aware(struct menu *m,
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
+	const int h = resolve_height(m);
+
 	move(rx, ry);
-
-	if (m->cc == 0) {
-		if (cr->ry == 0) {
-			printf("%s", s->border->top_left);
-		} else {
-			printf("%s", s->border->right_junction);
-		}
-	} else {
-		if (cr->ry == 0) {
-			printf("%s", s->border->top_junction);
-		} else {
-			r = set_edge(
-				m,
-				s,
-				ry,
-				s->border->right_junction
-			);
-			printf("%s", (char *)r.data);
-		}
+	r = set_edge(m, s, cr->ry + h, s->border->right_junction);
+	if (cr->ry-1 != 1) {
+		r = draw_horizontal_bar(cr->rx-2, cc->rx+cc->sx, cr->ry-1, s);
 	}
 	
+	r = draw_horizontal_bar(cr->rx-2, cc->rx+cc->sx-2, cr->ry+h, s);
+
+
+/*
 	for (int i = 0; i < sx - 2; i++) {
 		printf("%s", s->border->horizontal);
 	}
+*/
 
-	if (m->cc == m->nc - 1) {
-		if (cr->ry == 0) {
-			printf("%s", s->border->top_right);
-		} else {
-			printf("%s", s->border->left_junction);
-		}
-	} else {
-		if (cr->ry == 0) {
-			printf("%s", s->border->top_junction);
-		} else {
-			printf("%s", s->border->left_junction);
-		}
-	}
-
-	// Shift
-	// Need to clean this up and make height dynamic
-	move(cr->rx - 2, cr->ry + 5);
-
-
-	if (m->cc == 0) {
-		if (cr->ry + 5 == cc->sy) {
-			printf("%s", s->border->bottom_left);
-		} else {
-			printf("%s", s->border->right_junction);
-		}
-	} else {
-		if (cr->ry + 5 == cc->sy) {
-			printf("%s", s->border->bottom_junction);
-		} else {
-			printf("%s", s->border->right_junction);
-		}
-	}
-	
+	r = set_edge(m, s, &h, s->border->left_junction);
+/*
 	for (int i = 0; i < sx - 2; i++) {
 		printf("%s", s->border->horizontal);
 	}
-
-	if (m->cc == m->nc - 1) {
-		if (cr->ry == 0) {
-			printf("%s", s->border->bottom_right);
-		} else {
-			printf("%s", s->border->left_junction);
-		}
-	} else {
-		if (cr->ry == 0) {
-			printf("%s", s->border->bottom_junction);
-		} else {
-			printf("%s", s->border->left_junction);
-		}
-	}
-
+*/
 	fflush(stdout);
 
 	r.rc = 0;

@@ -30,6 +30,7 @@ void set_noncanonical_mode(int);
 
 void handle_signal(int);
 
+
 struct Result menu_switch(
 	struct menu **menu,
 	struct winsize *winsize,
@@ -91,9 +92,12 @@ struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
 void clear_column(struct menu*);
 
-struct Result set_edge_vertical_bar(struct menu*, struct style *, int*);
-struct Result set_edge_right_junction(struct menu*, struct style *, int);
-struct Result set_edge(struct menu*, struct style *, int, const char *);
+struct Result set_edge_vertical_bar(struct menu*, struct style *, const int *h, struct edges *);
+struct Result set_edge_vertical_bar_left(struct menu*, struct style *s, const int *h, struct edges *);
+
+struct Result set_edge_right_junction(struct menu*, struct style *, const int *h, struct edges *);
+struct Result set_edge_left_junction(struct menu*, struct style *, const int *h, struct edges *);
+struct Result set_edge(struct menu*, struct style *, const int *h, const char *);
 
 
 struct Result utf8_encode(uint32_t, char*);
