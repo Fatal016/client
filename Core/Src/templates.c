@@ -11,7 +11,7 @@ struct column search_menu_search_column = {
 				.name = "Search:",
 				.placeholder = "<Search Movies>",
 				.buf_pos = 0,
-				.height = 5
+				.height = 3
 				
 			},
 			.type = PROMPT
@@ -29,11 +29,38 @@ struct column search_menu_search_column = {
 
 	COLUMN_DEFAULTS,
 
-	.cr = 1
+	.cr = 0
 };
 
 struct column search_menu_null_column = {
 	ROWS (
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
 		&(struct row) {
 			.type = BREAK
 		}
@@ -43,7 +70,38 @@ struct column search_menu_null_column = {
 };
 
 struct column search_menu_results_column = {
-	.rs = NULL,
+	ROWS (
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		},
+		&(struct row) {
+			.type = BREAK
+		}
+	),
 
 	COLUMN_DEFAULTS
 };

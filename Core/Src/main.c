@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <locale.h>
 #include <string.h>
-#include <wchar.h>
 #include <termios.h>
 #include <signal.h>
 #include <sys/ioctl.h>
@@ -146,11 +145,10 @@ struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
 			p->value = NULL;
 		}
 	}
-
+/*
 	r = set_edge(
 		m,
 		s,
-		cc->rs[cc->cr]->ry - 1,
 		s->border->vertical
 	);
 
@@ -160,10 +158,9 @@ struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
 	r = set_edge(
 		m,
 		s,
-		cc->rs[cc->cr]->ry + ((struct prompt*)cc->rs[cc->cr]->data)->height,
 		s->border->vertical
 	);
-
+*/
 	fflush(stdout);;
 
 	r.rc = 0;
@@ -332,9 +329,9 @@ void set_noncanonical_mode(int echo)
 
 void handle_signal(int signal) {
 	if (signal == SIGINT) {
-		wprintf(L"\033[?25l");
-		wprintf(L"\033[2J\033[H");
-		wprintf(L"\033[?25h");
+		printf("\033[?25l");
+		printf("\033[2J\033[H");
+		printf("\033[?25h");
 	}
 
 	exit(0);
@@ -395,127 +392,209 @@ void clear_column(struct menu *m)
 	}
 }
 
-/*
-struct Result set_edge_vertical_bar(struct menu_t *m, int *rx, int *ry)
+
+bool edge_detect(struct column *c, int ry)
 {
-
-	struct column_t *cc = m->cs[m->cc];
-
-	if (m->cc > 0) {
-		struct column_t *pc = m->cs[m->cc-1];
-		for (int i = 0; i < pc->nr) {
-			switch (pc->rs[i]->type) {
-				case MENU:
+	for (int i = 0; i < c->nr; i++) {
+		struct row *r = c->rs[i];
+		switch (r->type) {
+			case BREAK:
+				if (r->ry > ry) {
+					return false;
+				} else if (r->ry == ry) {
+					return true;
+				} else {
 					break;
-				case FIELD:
-					break;
+				}
+		}
+	}
+}
 
-				case PROMPT:
-				
-					break;
+struct Result set_edge_vertical_bar_left(struct menu *m,
+					 struct style *s,
+					 const int *h,
+					 struct edges *e)
+{
+	struct Result r;
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	if (m->cc == 0) {
+		e->top_left = s->border->vertical;
+		e->bottom_left = s->border->vertical;
+	} else {
+		if (edge_detect(m->cs[m->cc-1], cr->ry - 1)) {
+			e->top_left = s->border->left_junction;
+		} else {
+			e->top_left = s->border->vertical;
+		}
+	}
+
+	return r;
+}
+
+struct Result set_edge_vertical_bar(struct menu *m,
+				    struct style *s,
+				    const int *h,
+				    struct edges *e)
+{
+	struct Result r;
+	r.rc = 0;
+	r.msg = NULL;
+	r.data = NULL;
+
+	r = set_edge_vertical_bar_left(m, s, h, e);
+
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result set_edge_right_junction(struct menu *m,
+				      struct style *s,
+				      const int ry)
+{
+	struct Result r;
+	r.rc = 0;
+	r.msg = NULL;
+	r.data = NULL;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	if (m->cc == 0) {
+	
+
+		if (cr->ry == 0) {
+			e->top_left = s->border->top_left;
+		} else {
+			e->top_left = s->border->right_junction;
+		}
+		e->bottom_left = s->border->right_junction;
+	} else {
+		if (cr->ry - 1 == 1) {
+			e->top_left = s->border->top_junction;
+		} else {
+			if (edge_detect(m->cs[m->cc-1], cr->ry - 1)) {
+				e->top_left = s->border->center_junction;
+			} else {
+				e->top_left = s->border->right_junction;
 			}
 		}
+		if (edge_detect(m->cs[m->cc-1], cr->ry + *h)) {
+			e->bottom_left = s->border->center_junction;
+		} else {
+			e->bottom_left = s->border->right_junction;
+		}
 	}
 
-	if (m->cc < m->nc - 1) {
-		
-	}
-
-
-	struct Result r;
+	r.rc = 0;
 	return r;
 }
+
+struct Result set_edge_left_junction(struct menu *m,
+				     struct style *s,
+				     const int *h,
+				     struct edges *e)
+{
+	struct Result r;
+	r.rc = 0;
+	r.msg = NULL;
+	r.data = NULL;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	if (m->cc == m->nc - 1) {
+		if (cr->ry == 0) {
+			e->top_right = s->border->top_right;
+		} else {
+			e->top_right = s->border->left_junction;
+		}
+		e->bottom_right = s->border->left_junction;
+	} else {
+		if (cr->ry - 1 == 1) {
+			e->top_right = s->border->top_junction;
+		} else {
+			if (edge_detect(m->cs[m->cc+1], cr->ry - 1)) {
+				e->top_right = s->border->center_junction;
+			} else {
+				e->top_right = s->border->left_junction;
+			}
+		}
+		if (edge_detect(m->cs[m->cc+1], cr->ry + *h)) {
+			e->bottom_right = s->border->center_junction;
+		} else {
+			e->bottom_right = s->border->left_junction;
+		}
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+const int resolve_height(struct menu *m)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	if (cr->type == PROMPT) {
+		struct prompt *p = (struct prompt *)cr->data;
+		if (p->mode == ENTRY) {
+			return p->height + 2;
+		}
+	}
+
+	return cr->height;
+}
+
+struct Result set_edge(struct menu *m,
+		       struct style *s,
+		       const int ry,
+		       const char *c)
+{
+	struct Result r;
+	r.rc = 0;
+	r.data = NULL;
+	r.msg = NULL;
+/*
+	struct edges e;
+	e.top_left = 0;
+	e.bottom_left = 0;
+	e.top_right = 0;
+	e.bottom_right = 0;
 */
-
-
-struct Result set_edge_right_junction(struct menu *m, struct style *s, int ry)
-{
-	struct Result r;
-	r.rc = 0;
-	r.msg = NULL;
-	r.data = NULL;
-
-	struct column *pc = m->cs[m->cc-1];
-	
-	for (int i = 0; i < pc->nr; i++) {
-		struct row *pcr = pc->rs[i];
-		switch (pcr->type) {
-			case BREAK:
-				if (pcr->ry == ry) {
-				/*
-					r.data = malloc(5 * sizeof(char));
-					*(char *)r.data = *s->border->center_junction;
-				*/
-					r.data = (void *)s->border->center_junction;
-				}
-				break;
-			default:
-				break;
-		}
-	}
-
-	r.rc = 0;
-	return r;
-}
-
-struct Result set_edge_vertical_bar(struct menu *m, struct style *s, int *ry)
-{
-	struct Result r;
-	r.rc = 0;
-	r.msg = NULL;
-	r.data = NULL;
-
-	struct column *pc = m->cs[m->cc-1];
-	struct column *nc = m->cs[m->cc+1];
-
-	for (int i = 0; i < pc->nr; i++) {
-		struct row *pcr = pc->rs[i];
-		switch (pcr->type) {
-			case BREAK:
-				if (pcr->ry == ry) {
-							
-					r.data = (int*)malloc(sizeof(int));
-					*(int*)r.data = s->border->left_junction;
-				}
-				break;
-			default:
-				break;
-		}
-	}
-	for (int i = 0; i < nc->nr; i++) {
-	//	struct row_t *ncr = nc->rs[i];
-	}
-
-	r.rc = 0;
-	return r;
-}
-
-struct Result set_edge(struct menu *m, struct style *s, int ry, const char *c)
-{
-	struct Result r;
-	r.rc = 0;
-	r.data = NULL;
-	r.msg = NULL;
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
 
 	uint32_t c_int = utf8_decode(c);
-
 	if (c_int == utf8_decode(s->border->right_junction)) {
 		r = set_edge_right_junction(m, s, ry);
 	} else if (c_int == utf8_decode(s->border->vertical)) {
-		r = set_edge_vertical_bar(m, s, ry);
+//		r = set_edge_vertical_bar(m, s, ry);
+	} else if (c_int == utf8_decode(s->border->left_junction)) {
+//		r = set_edge_left_junction(m, s, ry);
 	}
 /*
-	if (r.data == NULL) {
-		r.data = (int*)malloc(sizeof(int));
-		*(int*)r.data = c;
+	if (e.top_left) {
+		move(cr->rx-2, cr->ry-1);
+		printf("%s", e.top_left);
+	}
+	if (e.bottom_left) {
+		move(cr->rx-2, cr->ry+ *h);
+		printf("%s", e.bottom_left);
+	}
+	if (e.top_right) {
+		move(cr->rx+cc->sx-3, cr->ry-1);
+		printf("%s", e.top_right);
+	}
+	if (e.bottom_right) {
+		move(cr->rx+cc->rx-3, cr->ry+ *h);
+		printf("%s", e.bottom_right);
 	}
 */
 	return r;
-	/*
-		case VERTICAL_BAR:
-			r = set_edge_vertical_bar(m, rx, ry);
-			break;
-	*/}
+}
 
 struct Result utf8_encode(uint32_t c, char *o)
 {

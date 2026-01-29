@@ -36,6 +36,13 @@ enum column_profile {
 	MAX
 };
 
+struct edges {
+	char* top_left;
+	char* top_right;
+	char* bottom_left;
+	char* bottom_right;
+};
+
 struct pending {
 	bool init;
 	bool scale;
@@ -188,5 +195,9 @@ struct Result draw_column_dividers(struct menu*, struct style *s);
 struct Result draw_dividers(struct menu*, struct style *s);
 
 struct Result draw_horizontal_bar(int, int, int, struct style*);
+
+bool edge_detect(struct column*, int);
+
+const int resolve_height(struct menu*);
 
 #endif

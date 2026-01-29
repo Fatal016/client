@@ -2,17 +2,17 @@
 #define H_STYLE
 
 struct border_style {
-	const char *top_left;
-	const char *top_right;
-	const char *bottom_left;
-	const char *bottom_right;
-	const char *horizontal;
-	const char *vertical;
-	const char *top_junction;
-	const char *left_junction;
-	const char *center_junction;
-	const char *right_junction;
-	const char *bottom_junction;
+	char *top_left;
+	char *top_right;
+	char *bottom_left;
+	char *bottom_right;
+	char *horizontal;
+	char *vertical;
+	char *top_junction;
+	char *left_junction;
+	char *center_junction;
+	char *right_junction;
+	char *bottom_junction;
 };
 
 struct text_style {
