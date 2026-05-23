@@ -16,16 +16,10 @@ struct Result {
 enum row_type {
 	MENU,
 	FIELD,
-	PROMPT,
 	BREAK
 };
 
-enum side {
-	LEFT,
-	RIGHT
-};
-
-enum prompt_mode {
+enum field_mode {
 	TRAVERSE,
 	ENTRY
 };
@@ -36,13 +30,7 @@ enum column_profile {
 	MAX
 };
 
-struct edges {
-	char* top_left;
-	char* top_right;
-	char* bottom_left;
-	char* bottom_right;
-};
-
+// Am I going with signals?
 struct pending {
 	bool init;
 	bool scale;
@@ -65,42 +53,23 @@ struct row {
 	int height_set;
 }; 
 
-struct prompt {
+struct field {
 	char *name;
-	char *value;
 	char *placeholder;
+	bool read_only;
 
-	enum prompt_mode mode;
+	char *value;
 	size_t value_pos;
 
-	int pos;
-
-//	size_t buf_pos;
-	size_t buf_len;
-
-	int cr;
-	int cr_set;
-
 	int height;
-	int height_set;
 
 	int name_len;
 	int value_len;
-	int len;
 
-	int pos_x;
-	bool pos_x_set;
-
-	int pos_y;
-	bool pos_y_set;
+	// Probably don't need this to be field bound since you're bound to entry
+	// if you're doing it	
+	enum field_mode mode;
 };
-
-struct field {
-	char *name;
-	char *value;
-	int len;
-};
-
 
 struct column {
 
@@ -195,12 +164,11 @@ struct Result draw_row(struct menu*, struct winsize*, struct style*, int, int);
 
 struct Result draw_menu(struct menu*, struct style*);
 struct Result draw_field(struct field*, struct style*);
-struct Result draw_prompt(struct prompt*, struct style*);
 
 int clear_style(struct menu*, struct winsize*);
 
 struct Result set_style(struct menu*, struct winsize*, struct style *s);
-struct Result prompt_style(struct menu*, struct winsize*, struct style *s, enum prompt_mode);
+struct Result field_style(struct menu*, struct winsize*, struct style *s, enum field_mode);
 
 struct Result init_module(struct menu*, struct winsize*);
 struct Result scale_module(struct menu*, struct winsize*);
@@ -217,6 +185,6 @@ const int resolve_height(struct menu*);
 
 struct Result clear_box(struct menu *m, struct style *s);
 
-struct Result clear_prompt_box(struct menu *m, struct style *s);
+struct Result clear_field_box(struct menu *m, struct style *s);
 
 #endif
