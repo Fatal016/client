@@ -46,9 +46,11 @@ struct Result draw_prompt(struct prompt *p, struct style *s)
 
 	p->name_len = strlen(p->name);
 	p->value_len = strlen(p->value);
-	p->len = p->name_len + p->value_len + 1;
+	p->len = p->name_len + s->text_divider_len + p->value_len;
 
-	printf("%s %s", p->name, p->value);
+	p->pos = p->name_len + s->text_divider_len + p->value_pos;
+
+	printf("%s%s%s", p->name, s->text_divider, p->value);
 
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
@@ -57,12 +59,18 @@ struct Result draw_prompt(struct prompt *p, struct style *s)
 	return r;
 }
 
-struct Result draw_row(struct menu *m, struct winsize *w, struct style *s, int tc, int tr)
+struct Result draw_row(struct menu *m,
+		       struct winsize *w,
+		       struct style *s,
+		       int tc,
+		       int tr)
 {
 	struct Result r;
 	
 	struct column *cc = m->cs[tc];
 	struct row *cr = cc->rs[tr];
+
+	move(cr->rx, cr->ry);
 
 	switch(cr->type) {
 		case MENU:
@@ -75,23 +83,32 @@ struct Result draw_row(struct menu *m, struct winsize *w, struct style *s, int t
 			r = draw_prompt((struct prompt *)cr->data, s);
 			break;
 		case BREAK:
-			r = draw_horizontal_bar(cc->rx, cc->rx + cc->sx - 1, cr->ry, s);
+			r = draw_horizontal_bar(m, s, tc, cr->ry);
 	}
 
 	return r;
 }
 
-struct Result draw_column(struct menu *m, struct winsize *w, struct style *s, int tc)
+struct Result draw_column(struct menu *m,
+			  struct winsize *w,
+			  struct style *s,
+			  int tc)
 {
 	struct Result r;
 	int max_size = 0;
 
 	struct column *cc = m->cs[tc];
+	struct row *cr;
 
 	for (int i = 0; i < cc->nr; i++) {
-		move(cc->rx + 2, cc->ry + 1 + i);
-		cc->rs[i]->rx = cc->rx + 2;
-		cc->rs[i]->ry = cc->ry + 1 + i;
+
+		cr = cc->rs[i];
+
+		cr->rx = cc->rx + 1 + s->border_padding_left;
+		cr->ry = cc->ry + 1 + i;
+
+		cr->sx = cc->sx - (2 + s->border_padding);
+		cr->sy = 1;
 
 		r = draw_row(m, w, s, tc, i);
 		if (r.rc != 0) return r;
@@ -163,24 +180,65 @@ struct Result scale_module(struct menu *m, struct winsize *w)
 	return r;
 }
 
-struct Result draw_horizontal_bar(struct menu *m, struct style *s, int ry)
+
+struct Result clear_horizontal_bar(struct menu *m,
+				   struct style *s,
+				   int tc,
+				   int ry)
 {
 	struct Result r;
 
-	r = set_edge(m, s, ry, s->border->right_junction);
+	move(m->cs[tc]->rx, ry);
 
+//	r = set_edge(m, s, tc, ry, s->border->vertical);
 
-//	printf("\033[%d;%dH%s", ry, xs, s->border->right_junction);
-	for (int i = xs + 1; i < xe; i++) {
-		printf("\033[%d;%dH%s", ry, i, s->border->horizontal);
+/*
+	if (r.rc == 0) {
+		printf("%s", (char*)r.data);
 	}
-	printf("\033[%d;%dH%s", ry, xe, s->border->left_junction);
+*/
+
+
+	for (int i = m->cs[tc]->rx + 1; i < m->cs[tc]->rx + m->cs[tc]->sx; i++) {
+		printf("%s", " ");
+	}
+/*
+	r = set_edge(m, s, tc, ry, s->border-vertical);
+	if (r.rc == 0) {
+		printf("%s", (char *)r.data);
+	}
+*/
+	r.rc = 0;
+	return r;
+}
+
+struct Result draw_horizontal_bar(struct menu *m,
+				  struct style *s,
+				  int tc,
+				  int ry)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+
+	move(m->cs[tc]->rx, ry);
+
+	r = set_edge(m, s, tc, ry, s->border->right_junction);
+	if (r.rc == 0) {
+		printf("%s", (char*)r.data);
+	}
+
+	for (int i = m->cs[tc]->rx + 1; i < m->cs[tc]->rx + m->cs[tc]->sx - 1; i++) {
+		printf("%s", s->border->horizontal);
+	}
+
+	r = set_edge(m, s, tc, ry, s->border->left_junction);
+	if (r.rc == 0) {
+		printf("%s", (char*)r.data);
+	}
+
 
 	r.rc = 0;
-
-	r.data = malloc(sizeof(int));
-	*(int *)r.data = 1;	
-
 	return r;
 }
 
@@ -239,6 +297,11 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
+	init_module(m, w);
+	scale_module(m, w);
+	draw_box_general(m->sx, m->sy, m->rx, m->ry, s);
+	r = draw_dividers(m, s);
+/*
 	if (!m->pending_init) {
 		r = init_module(m, w);
 		m->pending_init = true;
@@ -258,7 +321,7 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 		r = draw_dividers(m, s);
 		m->pending_dividers = true;
 	}
-
+*/
 
 	for (int i = 0; i < m->nc; i++) {
 		r = draw_column(m, w, s, i);
@@ -339,40 +402,35 @@ struct Result prompt_style(struct menu *m,
 			   enum prompt_mode mode)
 {
 	struct Result r;
-	struct column *cc = m->cs[m->cc];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
 
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cr->data;
+/*
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
-
+*/
 	switch (mode) {
 		case TRAVERSE:
 			p->mode = TRAVERSE;
-			move(cc->rx + 2, ypos);
+			move(cr->rx, cr->ry);
 			printf("\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
 				s->text->background,
 				p->name_len,
 				p->name
 			);
-			p->mode = TRAVERSE;
 			break;
 		case ENTRY:
 			p->mode = ENTRY;
-			move(cc->rx + 2, ypos);
-			printf("\033[0m%*s\033[0m\n", p->name_len, p->name);
 			r = init_prompt(m, w, s);
+//			clear_column(m);
 
+//			prompt_style(m, w, s, TRAVERSE);
 
-			printf(CLEAR_DISPLAY);
-			prompt_style(m, w, s, TRAVERSE);
-			r = draw_module(m, w, s);
-
-			clear_column(m);
-			r = set_style(m, w, s);
-			//moveCursor(cc->rx + 1 + offset, ypos);
-			//wprintf(L"\033[30;47m%*s\033[0m\n", p->name_len, p->name);
+//			draw_column(m, w, s, m->cc);
+//			r = set_style(m, w, s);
 			break;
 	}
 
@@ -462,12 +520,37 @@ if (menu->type == MENU) {
 	return r;
 }
 
-struct Result draw_box_aware(struct menu *m,
-			     struct style *s,
-			     int sx,
-			     int sy,
-			     int rx,
-			     int ry)
+struct Result clear_prompt_box(struct menu *m, struct style *s)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = cr->data;
+
+	const int h = resolve_height(m);
+
+	for (int i = 0; i < h; i++) {
+		if (i == 0) {
+			move(cr->rx + p->name_len + s->text_divider_len, cr->ry + i);
+			for (int j = 0; j < cr->sx - (p->name_len + s->text_divider_len); j++) {
+				printf(" ");
+			}
+		} else {
+			move(cr->rx, cr->ry + i);
+			for (int j = 0; j < cr->sx; j++) {
+				printf(" ");
+			}
+		}
+	}
+
+	fflush(stdout);
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result clear_box(struct menu *m, struct style *s)
 {
 	struct Result r;
 
@@ -476,27 +559,31 @@ struct Result draw_box_aware(struct menu *m,
 
 	const int h = resolve_height(m);
 
-	move(rx, ry);
-	r = set_edge(m, s, cr->ry + h, s->border->right_junction);
-	if (cr->ry-1 != 1) {
-		r = draw_horizontal_bar(cr->rx-2, cc->rx+cc->sx, cr->ry-1, s);
+	for (int i = 0; i < h; i++) {
+		move(cc->rx + 1, cr->ry + i);
+		for (int j = 0; j < cc->sx - 2; j++) {
+			printf(" ");
+		}
 	}
-	
-	r = draw_horizontal_bar(cr->rx-2, cc->rx+cc->sx-2, cr->ry+h, s);
 
+	fflush(stdout);
 
-/*
-	for (int i = 0; i < sx - 2; i++) {
-		printf("%s", s->border->horizontal);
-	}
-*/
+	r.rc = 0;
+	return r;
+}
 
-	r = set_edge(m, s, &h, s->border->left_junction);
-/*
-	for (int i = 0; i < sx - 2; i++) {
-		printf("%s", s->border->horizontal);
-	}
-*/
+struct Result draw_box_aware(struct menu *m, struct style *s)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	const int h = resolve_height(m);
+
+	r = draw_horizontal_bar(m, s, m->cc, cr->ry-1);
+	r = draw_horizontal_bar(m, s, m->cc, cr->ry + h);
+
 	fflush(stdout);
 
 	r.rc = 0;
@@ -541,29 +628,6 @@ struct Result draw_box_general(int sx, int sy, int rx, int ry, struct style *s)
 
 }
 
-/* Can clear any horizontal space to blank space before instantiating box */
-/* To avoid flickering */
-/*
-struct Result draw_box(struct menu_t *m, enum style s, int sx, int sy, int rx, int ry) 
-{
-	struct Result r;
-
-	switch(s) {
-		case GENERAL:
-			r = draw_box_general(sx, sy, rx, ry);
-			break
-		case AWARE:
-			r = draw_box_aware(sx, sy, rx, ry);
-			break;
-	}
-
-
-	fflush(stdout);
-
-	r.rc = 0;
-	return r;
-}
-*/
 /*
 int resize_menu(struct menu_t* m)
 {

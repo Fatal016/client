@@ -1,3 +1,6 @@
+#include <string.h>
+#include <stdlib.h>
+
 #include "../Inc/style.h"
 
 struct border_style BORDER_SINGLE = {
@@ -18,3 +21,22 @@ struct text_style BLACK_AND_WHITE = {
 	.foreground = 30,
 	.background = 47
 };
+
+struct style *style_init(struct border_style *border,
+			 struct text_style *text,
+			 char *text_divider,
+			 int border_padding_left,
+			 int border_padding_right)
+{
+	struct style *s = malloc(sizeof(struct style));
+	s->border = border;
+	s->text = text;
+	s->text_divider = text_divider;
+	s->text_divider_len = strlen(text_divider);
+
+	s->border_padding_left = border_padding_left,
+	s->border_padding_right = border_padding_right,
+	s->border_padding = border_padding_left + border_padding_right;
+
+	return s;
+}

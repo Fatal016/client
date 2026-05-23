@@ -23,10 +23,19 @@ struct text_style {
 struct style {
 	struct border_style *border;
 	struct text_style *text;
+
+	char *text_divider;
+	int text_divider_len;
+
+	int border_padding;
+	int border_padding_left;
+	int border_padding_right;
 };
 
 extern struct border_style BORDER_SINGLE;
 
 extern struct text_style BLACK_AND_WHITE;
+
+struct style *style_init(struct border_style*, struct text_style*, char *text_divider, int, int);
 
 #endif
