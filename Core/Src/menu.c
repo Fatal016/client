@@ -24,37 +24,35 @@ struct Result draw_menu(struct menu *m, struct style *s)
 	return r;
 }
 
+// Can accept extra mode var here?
 struct Result draw_field(struct field *f, struct style *s)
 {
 	struct Result r;
-
-	r.rc = 0;
-	return r;
-}
-
-struct Result draw_prompt(struct prompt *p, struct style *s)
-{
-	struct Result r;
-
+/*
 	if (p->mode == NULL) {
 		p->mode = TRAVERSE;
 	}
-
-	if (p->value == NULL) {
-		p->value = p->placeholder;
+*/
+	if (f->value == NULL) {
+		f->value = f->placeholder;
 	}
 
-	p->name_len = strlen(p->name);
-	p->value_len = strlen(p->value);
-	p->len = p->name_len + s->text_divider_len + p->value_len;
+	f->name_len = strlen(f->name);
+	f->value_len = strlen(f->value);
+//	p->len = p->name_len + s->text_divider_len + p->value_len;
 
-	p->pos = p->name_len + s->text_divider_len + p->value_pos;
+//	p->pos = p->name_len + s->text_divider_len + p->value_pos;
 
-	printf("%s%s%s", p->name, s->text_divider, p->value);
+
+	// Replace with generalized cascade
+	printf("%s%s%s", f->name, s->text_divider, f->value);
 
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
-	*(int *)(r.data) = p->len;
+
+	// Convert to generalized get_field_len function
+	// get_field_len currently relies on active context of row
+	*(int *)(r.data) = f->name_len + s->text_divider_len + f->value_len;
 
 	return r;
 }
@@ -78,9 +76,6 @@ struct Result draw_row(struct menu *m,
 			break;
 		case FIELD:
 			r = draw_field((struct field *)cr->data, s);
-			break;
-		case PROMPT:
-			r = draw_prompt((struct prompt *)cr->data, s);
 			break;
 		case BREAK:
 			r = draw_horizontal_bar(m, s, tc, cr->ry);
@@ -396,16 +391,16 @@ int clear_style(struct menu_t *menu, struct winsize *w) {
 }
 */
 
-struct Result prompt_style(struct menu *m,
+struct Result field_style(struct menu *m,
 			   struct winsize *w,
 			   struct style *s,
-			   enum prompt_mode mode)
+			   enum field_mode mode)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cr->data;
+	struct field *f = (struct field *)cr->data;
 /*
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
@@ -413,18 +408,18 @@ struct Result prompt_style(struct menu *m,
 */
 	switch (mode) {
 		case TRAVERSE:
-			p->mode = TRAVERSE;
+			f->mode = TRAVERSE;
 			move(cr->rx, cr->ry);
 			printf("\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
 				s->text->background,
-				p->name_len,
-				p->name
+				f->name_len,
+				f->name
 			);
 			break;
 		case ENTRY:
-			p->mode = ENTRY;
-			r = init_prompt(m, w, s);
+			f->mode = ENTRY;
+			r = init_field(m, w, s);
 //			clear_column(m);
 
 //			prompt_style(m, w, s, TRAVERSE);
@@ -471,18 +466,16 @@ struct Result set_style(struct menu *m, struct winsize *w, struct style *s)
 				((struct menu *)cc->rs[cc->cr]->data)->pn
 			);
 			break;
-		case PROMPT:
-			r = prompt_style(
+		case FIELD:
+			r = field_style(
 				m,
 				w,
 				s,
-				(enum prompt_mode){ TRAVERSE }
+				(enum field_mode){ TRAVERSE }
 			); // update once done testing
 //			wprintf(L"\033[30;47m%*s\033[0m\n", )
 
 	//		wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->tr]->data)->pn);
-		case FIELD:
-			break;
 		default:
 			break;
 	}
@@ -520,20 +513,20 @@ if (menu->type == MENU) {
 	return r;
 }
 
-struct Result clear_prompt_box(struct menu *m, struct style *s)
+struct Result clear_field_box(struct menu *m, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = cr->data;
+	struct field *f = cr->data;
 
 	const int h = resolve_height(m);
 
 	for (int i = 0; i < h; i++) {
 		if (i == 0) {
-			move(cr->rx + p->name_len + s->text_divider_len, cr->ry + i);
-			for (int j = 0; j < cr->sx - (p->name_len + s->text_divider_len); j++) {
+			move(cr->rx + f->name_len + s->text_divider_len, cr->ry + i);
+			for (int j = 0; j < cr->sx - (f->name_len + s->text_divider_len); j++) {
 				printf(" ");
 			}
 		} else {
