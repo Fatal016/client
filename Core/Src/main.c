@@ -116,10 +116,7 @@ struct Result menu_enter(struct menu **m, struct winsize *w, struct style *s)
 			r = draw_next_menu(m, w, s);
 			break;
 		case FIELD:
-			break;
-		case PROMPT:
-//			struct prompt_t *p = (struct prompt_t *)cr->data;
-			r = prompt_style(*m, w, s, ENTRY);
+			field_style(*m, w, s, (enum field_mode){ ENTRY });
 			break;
 		default:
 			break;
@@ -130,23 +127,23 @@ struct Result menu_enter(struct menu **m, struct winsize *w, struct style *s)
 }
 
 
-struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_enter(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	buf[p->value_len] = '\0';
+	buf[f->value_len] = '\0';
 
-	if (p->value_len > 0) {
+	if (f->value_len > 0) {
 
-		p->value = (char *)malloc((p->value_len + 1) * sizeof(char));
-		strncpy(p->value, buf, p->value_len + 1);
+		f->value = (char *)malloc((f->value_len + 1) * sizeof(char));
+		strncpy(f->value, buf, f->value_len + 1);
 	} else {
-		if (p->value != p->placeholder) {
-			free(p->value);
-			p->value = NULL;
+		if (f->value != f->placeholder) {
+			free(f->value);
+			f->value = NULL;
 		}
 	}
 /*
@@ -172,14 +169,14 @@ struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
 }
 
 
-struct Result prompt_escape(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_escape(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cr->data;
+	struct field *f = (struct field *)cr->data;
 
 	int c;
 /*	
@@ -196,7 +193,7 @@ struct Result prompt_escape(struct menu *m, struct winsize *w, struct style *s)
 		if (c == 'C') {
 			if (buf_pos < buf_len) {
 				buf_pos++;
-				r = prompt_char_check_edge(m, s);
+				r = field_char_check_edge(m, s);
 				if (r.rc) {
 					move(cc->rx + s->border_padding_left, cr->ry + r.rc);
 				}
@@ -204,7 +201,7 @@ struct Result prompt_escape(struct menu *m, struct winsize *w, struct style *s)
 			}
 		} else if (c == 'D') {
 			if (buf_pos > 0) {
-				r = prompt_char_check_edge(m, s);
+				r = field_char_check_edge(m, s);
 				buf_pos--;
 				if (r.rc) {
 					move(cr->rx + cr->sx - 1, cr->ry + r.rc - 1);
@@ -220,16 +217,16 @@ struct Result prompt_escape(struct menu *m, struct winsize *w, struct style *s)
 	return r;
 }
 
-struct Result prompt_char_check_edge(struct menu *m, struct style *s)
+struct Result field_char_check_edge(struct menu *m, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	int num = (p->name_len + s->text_divider_len + buf_pos);
+	int num = (f->name_len + s->text_divider_len + buf_pos);
 	int den = cr->sx;
 
 	if (num % den == 0) {
@@ -241,16 +238,16 @@ struct Result prompt_char_check_edge(struct menu *m, struct style *s)
 	return r;
 }
 
-struct Result prompt_char_insert(struct menu *m, struct winsize *w, int *c)
+struct Result field_char_insert(struct menu *m, struct winsize *w, int *c)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	if (p->value_len <= (cc->sx - p->name_len) - 4) {
+	if (f->value_len <= (cc->sx - f->name_len) - 4) {
 		// print it and return
 	}
 
@@ -264,64 +261,64 @@ int get_field_pos(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return p->name_len + s->text_divider_len + buf_pos;
+	return f->name_len + s->text_divider_len + buf_pos;
 }
 
 int get_field_pos_line(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return (p->name_len + s->text_divider_len + buf_pos)/cr->sx;
+	return (f->name_len + s->text_divider_len + buf_pos)/cr->sx;
 }
 
 int get_field_pos_mod(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return (p->name_len + s->text_divider_len + buf_pos) % cr->sx;
+	return (f->name_len + s->text_divider_len + buf_pos) % cr->sx;
 }
 
 int get_field_len(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return p->name_len + s->text_divider_len + buf_len;
+	return f->name_len + s->text_divider_len + buf_len;
 }
 
 int get_field_len_line(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return (p->name_len + s->text_divider_len + buf_len)/cr->sx + 1;
+	return (f->name_len + s->text_divider_len + buf_len)/cr->sx + 1;
 }
 
 int get_field_len_mod(struct menu *m, struct style *s)
 {
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
-	return (p->name_len + s->text_divider_len + buf_len) % cr->sx;
+	return (f->name_len + s->text_divider_len + buf_len) % cr->sx;
 }
 
-struct Result prompt_char_shift(struct menu *m, struct style *s)
+struct Result field_char_shift(struct menu *m, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 	
 	int pos = get_field_pos(m, s);
 	int lref = pos/cr->sx;
@@ -346,30 +343,30 @@ struct Result prompt_char_shift(struct menu *m, struct style *s)
 				printf(" ");
 			} 
 			move(cr->rx, cr->ry + i);
-			printf("%.*s", cr->sx, buf + (cr->sx - p->name_len - s->text_divider_len) + cr->sx * (i - 1));
+			printf("%.*s", cr->sx, buf + (cr->sx - f->name_len - s->text_divider_len) + cr->sx * (i - 1));
 		}
 	}
 	return r;
 }
 
-struct Result prompt_backspace(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cr->data;
+	struct field *f = (struct field *)cr->data;
 
-	if (p->value_pos > 0) {
+	if (f->value_pos > 0) {
 		memmove(
-			&buf[p->value_pos - 1],
-			&buf[p->value_pos],
-			p->value_len - p->value_pos + 1
+			&buf[f->value_pos - 1],
+			&buf[f->value_pos],
+			f->value_len - f->value_pos + 1
 		);
-		p->value_pos--;
-		p->value_len--;
-		r = prompt_char_check_edge(m, s);
+		f->value_pos--;
+		f->value_len--;
+		r = field_char_check_edge(m, s);
 		printf("\033[D \033[D");
 		if (r.rc == 1) {
 //			p->cr--;
@@ -382,14 +379,14 @@ struct Result prompt_backspace(struct menu *m, struct winsize *w, struct style *
 	return r;
 }
 
-struct Result prompt_char(struct menu *m, struct winsize *w, struct style *s, int *c)
+struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int *c)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
 	if (*c < 32 || *c > 126) {
 		r.rc = 0;
@@ -406,7 +403,7 @@ struct Result prompt_char(struct menu *m, struct winsize *w, struct style *s, in
 		buf[buf_pos] = *c;
 		buf_len++;
 
-		r = prompt_char_shift(m, s);
+		r = field_char_shift(m, s);
 	} else {
 		buf[buf_pos] = *c;
 		buf_len++;
@@ -443,33 +440,33 @@ struct Result prompt_char(struct menu *m, struct winsize *w, struct style *s, in
 }
 
 
-struct Result init_prompt(struct menu *m, struct winsize *w, struct style *s)
+struct Result init_field(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
-	struct prompt *p = (struct prompt *)cr->data;
+	struct field *f = (struct field *)cr->data;
 
 
 //	if (!p->cr_set) p->cr = 0;
 
-	r = clear_prompt_box(m, s);
+	r = clear_field_box(m, s);
 	draw_box_aware(m, s);
 
 	move(cr->rx, cr->ry);
-	printf("\033[0m%*s\033[0m\n", p->name_len, p->name);
+	printf("\033[0m%*s\033[0m\n", f->name_len, f->name);
 
 /*
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
 */
-	move(cr->rx + p->name_len + s->text_divider_len, cr->ry);
-	if (p->value != p->placeholder) {
-		buf_pos = p->value_pos;
-		buf_len = p->value_len;
-		printf("%s", p->value);
+	move(cr->rx + f->name_len + s->text_divider_len, cr->ry);
+	if (f->value != f->placeholder) {
+		buf_pos = f->value_pos;
+		buf_len = f->value_len;
+		printf("%s", f->value);
 	} else {
 		buf_len = 0;
 		buf_pos = 0;
@@ -485,16 +482,16 @@ struct Result init_prompt(struct menu *m, struct winsize *w, struct style *s)
 
 		switch (c) {
 			case ESCAPE:
-				r = prompt_escape(m, w, s);
+				r = field_escape(m, w, s);
 				break;
 			case ENTER:
-				r = prompt_enter(m, w, s);
+				r = field_enter(m, w, s);
 				return r;
 			case BACKSPACE:
-				r = prompt_backspace(m, w, s);
+				r = field_backspace(m, w, s);
 				break;
 			default:
-				r = prompt_char(m , w, s, &c);
+				r = field_char(m , w, s, &c);
 				break;
 		}
 		if (c == ENTER) break;
@@ -563,7 +560,7 @@ struct Result menu_switch(struct menu **m, struct winsize *w, struct style *s)
 	return r;
 }
 
-struct Result prompt_switch(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_switch(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
 /*
@@ -731,10 +728,10 @@ const int resolve_height(struct menu *m)
 	struct column *cc = m->cs[m->cc];
 	struct row *cr = cc->rs[cc->cr];
 
-	if (cr->type == PROMPT) {
-		struct prompt *p = (struct prompt *)cr->data;
-		if (p->mode == ENTRY) {
-			return p->height;
+	if (cr->type == FIELD) {
+		struct field *f = (struct field *)cr->data;
+		if (f->mode == ENTRY) {
+			return f->height;
 		}
 	}
 

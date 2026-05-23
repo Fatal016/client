@@ -52,41 +52,41 @@ struct Result menu_enter(
 	struct style *style
 );
 
-struct Result prompt_switch(
+struct Result field_switch(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
-struct Result prompt_r_arrow(
+struct Result field_r_arrow(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
-struct Result prompt_l_arrow(
+struct Result field_l_arrow(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
-struct Result prompt_enter(
+struct Result field_enter(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
-struct Result prompt_backspace(
+struct Result field_backspace(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
-struct Result prompt_escape(
+struct Result field_escape(
 	struct menu *menu,
 	struct winsize *winsize,
 	struct style *style
 );
 
 
-struct Result init_prompt(struct menu*, struct winsize*, struct style *s);
+struct Result init_field(struct menu*, struct winsize*, struct style *s);
 
-struct Result prompt_char(struct menu*, struct winsize*, struct style *s, int*);
+struct Result field_char(struct menu*, struct winsize*, struct style *s, int*);
 
 struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
@@ -104,9 +104,9 @@ struct Result utf8_encode(uint32_t, char*);
 uint32_t utf8_decode(const char *c);
 //void print_utf8(uint32_t);
 
-struct Result prompt_char_check_edge(struct menu *m, struct style *s);
+struct Result field_char_check_edge(struct menu *m, struct style *s);
 
-struct Result prompt_char_shift(struct menu *m, struct style *s);
+struct Result field_char_shift(struct menu *m, struct style *s);
 
 int get_field_pos(struct menu *m, struct style *s);
 int get_field_pos_line(struct menu *m, struct style *s);
