@@ -58,6 +58,9 @@ struct row {
 	int ry;
 	bool ry_set;
 
+	int sx;
+	int sy;
+
 	int height;
 	int height_set;
 }; 
@@ -68,7 +71,12 @@ struct prompt {
 	char *placeholder;
 
 	enum prompt_mode mode;
-	size_t buf_pos;
+	size_t value_pos;
+
+	int pos;
+
+//	size_t buf_pos;
+	size_t buf_len;
 
 	int cr;
 	int cr_set;
@@ -79,6 +87,12 @@ struct prompt {
 	int name_len;
 	int value_len;
 	int len;
+
+	int pos_x;
+	bool pos_x_set;
+
+	int pos_y;
+	bool pos_y_set;
 };
 
 struct field {
@@ -170,7 +184,7 @@ int max_size(struct menu*);
 
 //struct Result draw_box(int, int, int, int);
 struct Result draw_box_general(int, int, int, int, struct style *s);
-struct Result draw_box_aware(struct menu*, struct style *s, int, int, int, int);
+struct Result draw_box_aware(struct menu*, struct style *s);
 
 struct Result draw_vertical_bar(int, int, int, struct style*);
 
@@ -194,10 +208,15 @@ struct Result scale_module(struct menu*, struct winsize*);
 struct Result draw_column_dividers(struct menu*, struct style *s);
 struct Result draw_dividers(struct menu*, struct style *s);
 
-struct Result draw_horizontal_bar(int, int, int, struct style*);
+struct Result draw_horizontal_bar(struct menu*, struct style*, int, int);
+struct Result clear_horizontal_bar(struct menu*, struct style*, int, int);
 
 bool edge_detect(struct column*, int);
 
 const int resolve_height(struct menu*);
+
+struct Result clear_box(struct menu *m, struct style *s);
+
+struct Result clear_prompt_box(struct menu *m, struct style *s);
 
 #endif

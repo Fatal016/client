@@ -86,22 +86,35 @@ struct Result prompt_escape(
 
 struct Result init_prompt(struct menu*, struct winsize*, struct style *s);
 
-struct Result prompt_char(struct menu*, struct winsize*, int*);
+struct Result prompt_char(struct menu*, struct winsize*, struct style *s, int*);
 
 struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
 void clear_column(struct menu*);
 
-struct Result set_edge_vertical_bar(struct menu*, struct style *, const int *h, struct edges *);
-struct Result set_edge_vertical_bar_left(struct menu*, struct style *s, const int *h, struct edges *);
+struct Result set_edge_vertical_bar(struct menu*, struct style *, const int tc, const int ry);
+struct Result set_edge_vertical_bar_left(struct menu*, struct style *s, const int tc, const int ry);
 
-struct Result set_edge_right_junction(struct menu*, struct style *, const int *h, struct edges *);
-struct Result set_edge_left_junction(struct menu*, struct style *, const int *h, struct edges *);
-struct Result set_edge(struct menu*, struct style *, const int *h, const char *);
+struct Result set_edge_right_junction(struct menu*, struct style *, const int tc, const int ry);
+struct Result set_edge_left_junction(struct menu*, struct style *, const int tc, const int ry);
+struct Result set_edge(struct menu*, struct style *, const int tc, const int ry, const char *);
 
 
 struct Result utf8_encode(uint32_t, char*);
 uint32_t utf8_decode(const char *c);
 //void print_utf8(uint32_t);
+
+struct Result prompt_char_check_edge(struct menu *m, struct style *s);
+
+struct Result prompt_char_shift(struct menu *m, struct style *s);
+
+int get_field_pos(struct menu *m, struct style *s);
+int get_field_pos_line(struct menu *m, struct style *s);
+int get_field_pos_mod(struct menu *m, struct style *s);
+
+int get_field_len(struct menu *m, struct style *s);
+int get_field_len_line(struct menu *m, struct style *s);
+int get_field_len_mod(struct menu *m, struct style *s);
+
 
 #endif

@@ -8,20 +8,20 @@ struct column search_menu_search_column = {
 	ROWS (
 		&(struct row) {
 			.data = &(struct prompt) {
-				.name = "Search:",
+				.name = "Search",
 				.placeholder = "<Search Movies>",
-				.buf_pos = 0,
-				.height = 3
+				.value_pos = 0,
+				.height = 1
 				
 			},
 			.type = PROMPT
 		},
 		&(struct row) {
 			.data = &(struct prompt) {
-				.name = "Test:",
+				.name = "Test",
 				.placeholder = "<Placeholder>",
-				.buf_pos = 0,
-				.height = 5
+				.value_pos = 0,
+				.height = 2
 			},
 			.type = PROMPT
 		}
@@ -63,7 +63,16 @@ struct column search_menu_null_column = {
 		},
 		&(struct row) {
 			.type = BREAK
-		}
+		},
+		&(struct row) {
+			.data = &(struct prompt) {
+				.name = "Test",
+				.placeholder = "<Placeholder>",
+				.value_pos = 0,
+				.height = 2
+			},
+			.type = PROMPT
+		},
 	),
 
 	COLUMN_DEFAULTS

@@ -1,8 +1,8 @@
-#include <stdio.h>
+#include <stdio.h> // eliminate
 #include <stdlib.h>
 #include <unistd.h>
 #include <locale.h>
-#include <string.h>
+#include <string.h> // unsure
 #include <termios.h>
 #include <signal.h>
 #include <sys/ioctl.h>
@@ -14,6 +14,8 @@
 #include "../Inc/style.h"
 
 char buf[MAX_BUF];
+size_t buf_pos;
+size_t buf_len;
 
 int main(int argc, char** argv)
 {
@@ -21,9 +23,13 @@ int main(int argc, char** argv)
 	struct winsize w;
 	struct menu *m = &search_menu;
 
-	struct style *s = (struct style *)malloc(sizeof(struct style));
-	s->border = &BORDER_SINGLE;
-	s->text = &BLACK_AND_WHITE;
+	struct style *s = style_init(
+				&BORDER_SINGLE,
+				&BLACK_AND_WHITE,
+				": ",
+				3,
+				4
+	);
 
 	/* Initialization */
 	setlocale(LC_CTYPE, "");
@@ -31,7 +37,7 @@ int main(int argc, char** argv)
 	set_noncanonical_mode(0);
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 //	printf(CURSOR_STYLE);
-//	printf(CURSOR_HIDE);
+	printf(CURSOR_HIDE);
 	
 	// ANSI Mode?
 //	printf("\033[?1l");
@@ -131,14 +137,12 @@ struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
 	struct column *cc = m->cs[m->cc];
 	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
 
-	buf[strlen(buf)] = '\0';
+	buf[p->value_len] = '\0';
 
-	if (p->buf_pos > 0) {
+	if (p->value_len > 0) {
 
-		p->value = (char *)malloc((strlen(buf) + 1) * sizeof(char));
-		strncpy(p->value, buf, strlen(buf) + 1);
-
-		p->value_len = strlen(buf);
+		p->value = (char *)malloc((p->value_len + 1) * sizeof(char));
+		strncpy(p->value, buf, p->value_len + 1);
 	} else {
 		if (p->value != p->placeholder) {
 			free(p->value);
@@ -167,88 +171,273 @@ struct Result prompt_enter(struct menu *m, struct winsize *w, struct style *s)
 	return r;
 }
 
-struct Result prompt_backspace(struct menu *m, struct winsize *w, struct style *s)
-{
-	struct Result r;
-
-	struct column *cc = m->cs[m->cc];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
-
-	if (p->buf_pos > 0) {
-		memmove(
-			&buf[p->buf_pos - 1],
-			&buf[p->buf_pos],
-			strlen(buf) - p->buf_pos + 1
-		);
-		p->buf_pos--;
-		printf("\033[D \033[D");
-	}
-
-	r.rc = 0;
-	return r;
-}
 
 struct Result prompt_escape(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
-/*
+
 	struct column *cc = m->cs[m->cc];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct row *cr = cc->rs[cc->cr];
+
+	struct prompt *p = (struct prompt *)cr->data;
 
 	int c;
-	
+/*	
+	c = getchar();
+	if (c != 0x1b) {
+		return r;
+	}
+*/
 	c = getchar();
 	// '[' -> ANSI/VT100
 	// 'O' -> Application Mode
 	if (c == '[' || c == 'O') {
 		c = getchar();
 		if (c == 'C') {
-			if (p->buf_pos < strlen(buf)) {
-				p->buf_pos++;
-				wprintf(L"\033[1C");
+			if (buf_pos < buf_len) {
+				buf_pos++;
+				r = prompt_char_check_edge(m, s);
+				if (r.rc) {
+					move(cc->rx + s->border_padding_left, cr->ry + r.rc);
+				}
+				printf("\033[1C");
 			}
 		} else if (c == 'D') {
-			if (p->buf_pos > 0) {
-				p->buf_pos--;
-
-				wprintf(L"\b");
+			if (buf_pos > 0) {
+				r = prompt_char_check_edge(m, s);
+				buf_pos--;
+				if (r.rc) {
+					move(cr->rx + cr->sx - 1, cr->ry + r.rc - 1);
+				} else {
+					printf("\b");
+				}
 			}
 
 		}
 	}
-*/
+
 	r.rc = 0;
 	return r;
 }
 
-struct Result prompt_char(struct menu *m, struct winsize *w, int *c)
+struct Result prompt_char_check_edge(struct menu *m, struct style *s)
 {
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
 
 	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
 
-	if (*c >= 32 && *c <= 126) {
-		if (p->buf_pos < strlen(buf)) {
-			memmove(
-				&buf[p->buf_pos + 1],
-				&buf[p->buf_pos],
-				strlen(buf) - p->buf_pos + 1
-			);
-			printf("\033[@");
-		}
+	int num = (p->name_len + s->text_divider_len + buf_pos);
+	int den = cr->sx;
 
-		buf[p->buf_pos] = *c;
-		p->buf_pos++;
-
-		if ((p->buf_pos % (cc->sx - p->name_len - 4)) == 0) {
-			printf("\n\033[%dG", cc->rx + 2);
-		}
-
-		printf("%c", *c);
+	if (num % den == 0) {
+		r.rc = num/den;
+		return r;
 	}
 
+	r.rc = 0;
+	return r;
+}
+
+struct Result prompt_char_insert(struct menu *m, struct winsize *w, int *c)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	if (p->value_len <= (cc->sx - p->name_len) - 4) {
+		// print it and return
+	}
+
+
+//	for (int i = 0; i < p->buf_pos)
+
+	return r;
+}
+
+int get_field_pos(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return p->name_len + s->text_divider_len + buf_pos;
+}
+
+int get_field_pos_line(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return (p->name_len + s->text_divider_len + buf_pos)/cr->sx;
+}
+
+int get_field_pos_mod(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return (p->name_len + s->text_divider_len + buf_pos) % cr->sx;
+}
+
+int get_field_len(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return p->name_len + s->text_divider_len + buf_len;
+}
+
+int get_field_len_line(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return (p->name_len + s->text_divider_len + buf_len)/cr->sx + 1;
+}
+
+int get_field_len_mod(struct menu *m, struct style *s)
+{
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	return (p->name_len + s->text_divider_len + buf_len) % cr->sx;
+}
+
+struct Result prompt_char_shift(struct menu *m, struct style *s)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	
+	int pos = get_field_pos(m, s);
+	int lref = pos/cr->sx;
+
+	int len = get_field_len(m, s);
+	int llen = len/cr->sx + 1;
+
+	for (int i = get_field_pos_line(m, s); i < get_field_len_line(m, s); i++) {
+		if (i == lref) {
+			move(
+				cr->rx + get_field_pos_mod(m, s),
+				cr->ry + get_field_pos_line(m, s)
+			);
+			for (int j = 0; j < cr->sx - get_field_pos_mod(m, s); j++) {
+				printf(" ");
+			}
+			move(cr->rx + get_field_pos_mod(m, s) + 1, cr->ry + get_field_pos_line(m, s));
+			printf("%.*s", cr->sx - get_field_pos_mod(m, s) - 1, buf + buf_pos + 1);
+		} else {
+			move(cr->rx, cr->ry + i);
+			for (int j = 0; j < cr->sx; j++) {
+				printf(" ");
+			} 
+			move(cr->rx, cr->ry + i);
+			printf("%.*s", cr->sx, buf + (cr->sx - p->name_len - s->text_divider_len) + cr->sx * (i - 1));
+		}
+	}
+	return r;
+}
+
+struct Result prompt_backspace(struct menu *m, struct winsize *w, struct style *s)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	struct prompt *p = (struct prompt *)cr->data;
+
+	if (p->value_pos > 0) {
+		memmove(
+			&buf[p->value_pos - 1],
+			&buf[p->value_pos],
+			p->value_len - p->value_pos + 1
+		);
+		p->value_pos--;
+		p->value_len--;
+		r = prompt_char_check_edge(m, s);
+		printf("\033[D \033[D");
+		if (r.rc == 1) {
+//			p->cr--;
+//			move(cr->rx + cr->sx, cr->ry + p->cr);
+
+		}
+	}
+
+	r.rc = 0;
+	return r;
+}
+
+struct Result prompt_char(struct menu *m, struct winsize *w, struct style *s, int *c)
+{
+	struct Result r;
+
+	struct column *cc = m->cs[m->cc];
+	struct row *cr = cc->rs[cc->cr];
+
+	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+
+	if (*c < 32 || *c > 126) {
+		r.rc = 0;
+		return r;
+	}
+
+	if (buf_pos < buf_len) {
+		// increment buff len and have handler for resize, etc.
+		memmove(
+			&buf[buf_pos + 1],
+			&buf[buf_pos],
+			buf_len - buf_pos
+		);
+		buf[buf_pos] = *c;
+		buf_len++;
+
+		r = prompt_char_shift(m, s);
+	} else {
+		buf[buf_pos] = *c;
+		buf_len++;
+
+	} 
+
+	move(
+		cr->rx + get_field_pos_mod(m, s),
+		cr->ry + get_field_pos_line(m, s)
+	);
+
+	buf_pos++;
+	printf("%c", *c);
+
+
+/*
+	if (get_field_pos_line(m, s) >= p->height) {
+		r = clear_horizontal_bar(m, s, m->cc, cr->ry + get_field_len_line(m, s) - 1);
+	}
+*/
+/*	
+	if (p->cr == p->height) {
+		r = clear_horizontal_bar(m, s, m->cc, cr->ry + p->cr-1);
+		p->height += 5;
+
+		printf("\n\033[%dG", cc->rx + 2);
+
+
+		draw_box_aware(m, s);
+	}
+*/
 	r.rc = 0;
 	return r;
 }
@@ -259,34 +448,44 @@ struct Result init_prompt(struct menu *m, struct winsize *w, struct style *s)
 	struct Result r;
 
 	struct column *cc = m->cs[m->cc];
-	struct prompt *p = (struct prompt *)cc->rs[cc->cr]->data;
+	struct row *cr = cc->rs[cc->cr];
+	struct prompt *p = (struct prompt *)cr->data;
 
-	draw_box_aware(m, s, cc->sx, p->height, cc->rx, cc->ry + cc->cr);
 
+//	if (!p->cr_set) p->cr = 0;
+
+	r = clear_prompt_box(m, s);
+	draw_box_aware(m, s);
+
+	move(cr->rx, cr->ry);
+	printf("\033[0m%*s\033[0m\n", p->name_len, p->name);
+
+/*
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
-
-	int offset = ((struct prompt *)(cc->rs[cc->cr]->data))->name_len + 1;
-	move(cc->rx + 2 + offset, ypos);
-
-	if (p->value == p->placeholder) {
-		printf("\033[0m%*s\033[0m\n", p->value_len, " ");
-		move(cc->rx + 2 + offset, ypos);
+*/
+	move(cr->rx + p->name_len + s->text_divider_len, cr->ry);
+	if (p->value != p->placeholder) {
+		buf_pos = p->value_pos;
+		buf_len = p->value_len;
+		printf("%s", p->value);
 	} else {
-		move(cc->rx + 2 + offset + p->value_len, ypos);
-		p->buf_pos = p->value_len;
+		buf_len = 0;
+		buf_pos = 0;
+//		p->value_len = 0;
 	}
+
+
 	printf(CURSOR_SHOW);
 
 	int c;
-
-	while (p->buf_pos < MAX_BUF) {
+	while (buf_pos < MAX_BUF) {
 		c = getchar();
 
 		switch (c) {
 			case ESCAPE:
-//				r = prompt_escape(m, w);
+				r = prompt_escape(m, w, s);
 				break;
 			case ENTER:
 				r = prompt_enter(m, w, s);
@@ -295,7 +494,7 @@ struct Result init_prompt(struct menu *m, struct winsize *w, struct style *s)
 				r = prompt_backspace(m, w, s);
 				break;
 			default:
-				r = prompt_char(m , w, &c);
+				r = prompt_char(m , w, s, &c);
 				break;
 		}
 		if (c == ENTER) break;
@@ -324,6 +523,10 @@ void set_noncanonical_mode(int echo)
 	} else {
 		term.c_lflag &= ~ECHO;
 	}
+
+	term.c_cc[VMIN] = 1;
+	term.c_cc[VTIME] = 0;
+
 	tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
@@ -408,43 +611,46 @@ bool edge_detect(struct column *c, int ry)
 				}
 		}
 	}
+	return false;
 }
 
 struct Result set_edge_vertical_bar_left(struct menu *m,
 					 struct style *s,
-					 const int *h,
-					 struct edges *e)
+					 const int tc,
+					 const int ry)
 {
 	struct Result r;
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
+	struct column *cc = m->cs[tc];
 
 	if (m->cc == 0) {
-		e->top_left = s->border->vertical;
-		e->bottom_left = s->border->vertical;
+		r.data = s->border->vertical;
 	} else {
-		if (edge_detect(m->cs[m->cc-1], cr->ry - 1)) {
-			e->top_left = s->border->left_junction;
+		if (edge_detect(m->cs[tc-1], ry)) {
+			r.data = s->border->left_junction;
 		} else {
-			e->top_left = s->border->vertical;
+			r.data = s->border->vertical;
 		}
 	}
 
+	r.rc = 0;
 	return r;
 }
 
 struct Result set_edge_vertical_bar(struct menu *m,
 				    struct style *s,
-				    const int *h,
-				    struct edges *e)
+				    const int tc,
+				    const int ry)
 {
 	struct Result r;
 	r.rc = 0;
 	r.msg = NULL;
 	r.data = NULL;
 
-	r = set_edge_vertical_bar_left(m, s, h, e);
-
+	r = set_edge_vertical_bar_left(m, s, tc, ry);
+	if (r.rc == 0) {
+		move(m->cs[tc]->rx, ry);
+		printf("%s", (char *)r.data);
+	}
 
 	r.rc = 0;
 	return r;
@@ -452,6 +658,7 @@ struct Result set_edge_vertical_bar(struct menu *m,
 
 struct Result set_edge_right_junction(struct menu *m,
 				      struct style *s,
+				      const int tc,
 				      const int ry)
 {
 	struct Result r;
@@ -459,32 +666,24 @@ struct Result set_edge_right_junction(struct menu *m,
 	r.msg = NULL;
 	r.data = NULL;
 
-	struct column *cc = m->cs[m->cc];
+	struct column *cc = m->cs[tc];
 	struct row *cr = cc->rs[cc->cr];
 
-	if (m->cc == 0) {
-	
-
-		if (cr->ry == 0) {
-			e->top_left = s->border->top_left;
+	if (tc == 0) {
+		if (ry == 0) {
+			r.data = s->border->top_left;
 		} else {
-			e->top_left = s->border->right_junction;
+			r.data = s->border->right_junction;
 		}
-		e->bottom_left = s->border->right_junction;
 	} else {
-		if (cr->ry - 1 == 1) {
-			e->top_left = s->border->top_junction;
+		if (ry == 1) {
+			r.data = s->border->top_junction;
 		} else {
-			if (edge_detect(m->cs[m->cc-1], cr->ry - 1)) {
-				e->top_left = s->border->center_junction;
+			if (edge_detect(m->cs[tc-1], ry)) {
+				r.data = s->border->center_junction;
 			} else {
-				e->top_left = s->border->right_junction;
+				r.data = s->border->right_junction;
 			}
-		}
-		if (edge_detect(m->cs[m->cc-1], cr->ry + *h)) {
-			e->bottom_left = s->border->center_junction;
-		} else {
-			e->bottom_left = s->border->right_junction;
 		}
 	}
 
@@ -494,38 +693,32 @@ struct Result set_edge_right_junction(struct menu *m,
 
 struct Result set_edge_left_junction(struct menu *m,
 				     struct style *s,
-				     const int *h,
-				     struct edges *e)
+				     const int tc,
+				     const int ry)
 {
 	struct Result r;
 	r.rc = 0;
 	r.msg = NULL;
 	r.data = NULL;
 
-	struct column *cc = m->cs[m->cc];
+	struct column *cc = m->cs[tc];
 	struct row *cr = cc->rs[cc->cr];
 
-	if (m->cc == m->nc - 1) {
-		if (cr->ry == 0) {
-			e->top_right = s->border->top_right;
+	if (tc == m->nc - 1) {
+		if (ry == 0) {
+			r.data = s->border->top_right;
 		} else {
-			e->top_right = s->border->left_junction;
+			r.data = s->border->left_junction;
 		}
-		e->bottom_right = s->border->left_junction;
 	} else {
-		if (cr->ry - 1 == 1) {
-			e->top_right = s->border->top_junction;
+		if (ry == 1) {
+			r.data = s->border->top_junction;
 		} else {
-			if (edge_detect(m->cs[m->cc+1], cr->ry - 1)) {
-				e->top_right = s->border->center_junction;
+			if (edge_detect(m->cs[tc+1], ry)) {
+				r.data = s->border->center_junction;
 			} else {
-				e->top_right = s->border->left_junction;
+				r.data = s->border->left_junction;
 			}
-		}
-		if (edge_detect(m->cs[m->cc+1], cr->ry + *h)) {
-			e->bottom_right = s->border->center_junction;
-		} else {
-			e->bottom_right = s->border->left_junction;
 		}
 	}
 
@@ -541,7 +734,7 @@ const int resolve_height(struct menu *m)
 	if (cr->type == PROMPT) {
 		struct prompt *p = (struct prompt *)cr->data;
 		if (p->mode == ENTRY) {
-			return p->height + 2;
+			return p->height;
 		}
 	}
 
@@ -550,6 +743,7 @@ const int resolve_height(struct menu *m)
 
 struct Result set_edge(struct menu *m,
 		       struct style *s,
+		       const int tc,
 		       const int ry,
 		       const char *c)
 {
@@ -557,42 +751,16 @@ struct Result set_edge(struct menu *m,
 	r.rc = 0;
 	r.data = NULL;
 	r.msg = NULL;
-/*
-	struct edges e;
-	e.top_left = 0;
-	e.bottom_left = 0;
-	e.top_right = 0;
-	e.bottom_right = 0;
-*/
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
 
 	uint32_t c_int = utf8_decode(c);
 	if (c_int == utf8_decode(s->border->right_junction)) {
-		r = set_edge_right_junction(m, s, ry);
+		r = set_edge_right_junction(m, s, tc, ry);
 	} else if (c_int == utf8_decode(s->border->vertical)) {
-//		r = set_edge_vertical_bar(m, s, ry);
+		r = set_edge_vertical_bar(m, s, tc, ry);
 	} else if (c_int == utf8_decode(s->border->left_junction)) {
-//		r = set_edge_left_junction(m, s, ry);
+		r = set_edge_left_junction(m, s, tc, ry);
 	}
-/*
-	if (e.top_left) {
-		move(cr->rx-2, cr->ry-1);
-		printf("%s", e.top_left);
-	}
-	if (e.bottom_left) {
-		move(cr->rx-2, cr->ry+ *h);
-		printf("%s", e.bottom_left);
-	}
-	if (e.top_right) {
-		move(cr->rx+cc->sx-3, cr->ry-1);
-		printf("%s", e.top_right);
-	}
-	if (e.bottom_right) {
-		move(cr->rx+cc->rx-3, cr->ry+ *h);
-		printf("%s", e.bottom_right);
-	}
-*/
+	
 	return r;
 }
 
