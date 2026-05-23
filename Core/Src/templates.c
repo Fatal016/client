@@ -7,23 +7,24 @@
 struct column search_menu_search_column = {
 	ROWS (
 		&(struct row) {
-			.data = &(struct prompt) {
+			.data = &(struct field) {
 				.name = "Search",
 				.placeholder = "<Search Movies>",
 				.value_pos = 0,
-				.height = 1
-				
+				.height = 1,
+				.read_only = false
 			},
-			.type = PROMPT
+			.type = FIELD,
 		},
 		&(struct row) {
-			.data = &(struct prompt) {
+			.data = &(struct field) {
 				.name = "Test",
 				.placeholder = "<Placeholder>",
 				.value_pos = 0,
-				.height = 2
+				.height = 2,
+				.read_only = false
 			},
-			.type = PROMPT
+			.type = FIELD,
 		}
 	),
 
@@ -63,16 +64,7 @@ struct column search_menu_null_column = {
 		},
 		&(struct row) {
 			.type = BREAK
-		},
-		&(struct row) {
-			.data = &(struct prompt) {
-				.name = "Test",
-				.placeholder = "<Placeholder>",
-				.value_pos = 0,
-				.height = 2
-			},
-			.type = PROMPT
-		},
+		}
 	),
 
 	COLUMN_DEFAULTS
