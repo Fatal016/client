@@ -47,9 +47,11 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 {
 	struct Result r;
 
+	int h;
+
 	switch(fm) {
 		case ENTRY:
-			int h = get_field_height(f, s, fm);			
+			h = get_field_height(f, s, fm);			
 
 			r = clear_field_box(f, s, fm);
 			r = draw_box_aware(
@@ -462,7 +464,7 @@ struct Result field_style(struct menu *m,
 			break;
 		case ENTRY:
 			//f->mode = ENTRY;
-			r = field_switch(m, w, s);
+			r = field_switch(f, s);
 
 			// Should modules perform their own cleanup? Unsure
 			clear_column(m);
@@ -479,12 +481,7 @@ struct Result field_style(struct menu *m,
 	r.rc = 0;
 	return r;
 }
-/*
-struct Result menu_style(struct menu_t *m, struct winsize *w)
-{
 
-}
-*/
 struct Result set_style(struct menu *m, struct winsize *w, struct style *s)
 {
 	// Handles default style case for row type

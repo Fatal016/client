@@ -85,6 +85,7 @@ struct Result menu_r_arrow(struct menu **m, struct winsize *w, struct style *s)
 			break;
 	}
 */
+	r.rc = 0;
 	return r;
 }
 
@@ -127,15 +128,11 @@ struct Result menu_enter(struct menu **m, struct winsize *w, struct style *s)
 }
 
 
-struct Result field_enter(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_enter(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct field *f = (struct field *)cc->rs[cc->cr]->data;
-
 	buf[buf_len] = '\0';
-
 	if (buf_len > 0) {
 		if (f->value != f->placeholder) {
 			if (f->value_len < buf_len) {
@@ -180,22 +177,11 @@ struct Result field_enter(struct menu *m, struct winsize *w, struct style *s)
 }
 
 
-struct Result field_escape(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_escape(struct field *f, struct style *s)
 {
 	struct Result r;
-
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	struct field *f = (struct field *)cr->data;
-
 	int c;
-/*	
-	c = getchar();
-	if (c != 0x1b) {
-		return r;
-	}
-*/
+
 	c = getchar();
 	// '[' -> ANSI/VT100
 	// 'O' -> Application Mode
@@ -204,18 +190,18 @@ struct Result field_escape(struct menu *m, struct winsize *w, struct style *s)
 		if (c == 'C') {
 			if (buf_pos < buf_len) {
 				buf_pos++;
-				r = field_char_check_edge(m, s);
+				r = field_char_check_edge(f->menu, s);
 				if (r.rc) {
-					move(cc->rx + s->border_padding_left, cr->ry + r.rc);
+					move(f->column->rx + s->border_padding_left, f->row->ry + r.rc);
 				}
 				printf("\033[1C");
 			}
 		} else if (c == 'D') {
 			if (buf_pos > 0) {
-				r = field_char_check_edge(m, s);
+				r = field_char_check_edge(f->menu, s);
 				buf_pos--;
 				if (r.rc) {
-					move(cr->rx + cr->sx - 1, cr->ry + r.rc - 1);
+					move(f->row->rx + f->row->sx - 1, f->row->ry + r.rc - 1);
 				} else {
 					printf("\b");
 				}
@@ -261,6 +247,8 @@ int get_field_height(struct field *f, struct style *s, enum field_mode fm)
 				h = get_field_len_line(f, s);
 			}
 			break;
+		case TRAVERSE:
+			break;
 	}
 
 	return h;
@@ -303,9 +291,6 @@ struct Result field_char_shift(struct field *f, struct style *s)
 	int pos = get_field_pos(f, s);
 	int lref = pos/f->row->sx;
 
-	int len = get_field_len(f, s);
-	int llen = len/f->row->sx + 1;
-
 	for (int i = get_field_pos_line(f, s); i < get_field_len_line(f, s); i++) {
 		if (i == lref) {
 			move(
@@ -337,17 +322,14 @@ struct Result field_char_shift(struct field *f, struct style *s)
 				buf + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1));
 		}
 	}
+
+	r.rc = 0;
 	return r;
 }
 
-struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_backspace(struct field *f, struct style *s)
 {
 	struct Result r;
-
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	struct field *f = (struct field *)cr->data;
 
 	if (buf_pos > 0) {
 		memmove(
@@ -362,8 +344,8 @@ struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s
 		r = field_char_shift(f, s);
 		
 		move(
-			cr->rx + get_field_pos_mod(f, s),
-			cr->ry + get_field_pos_line(f, s)
+			f->row->rx + get_field_pos_mod(f, s),
+			f->row->ry + get_field_pos_line(f, s)
 		);
 	}
 
@@ -371,14 +353,9 @@ struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s
 	return r;
 }
 
-struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int *c)
+struct Result field_char(struct field *f, struct style *s, int *c)
 {
 	struct Result r;
-
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	struct field *f = (struct field *)cc->rs[cc->cr]->data;
 
 	if (*c < 32 || *c > 126) {
 		r.rc = 0;
@@ -386,7 +363,6 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 	}
 
 	if (buf_pos < buf_len) {
-		// increment buff len and have handler for resize, etc.
 		memmove(
 			&buf[buf_pos + 1],
 			&buf[buf_pos],
@@ -399,26 +375,21 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 	} else {
 		buf[buf_pos] = *c;
 		buf_len++;
-
 	} 
 
-	int x = get_field_pos_mod(f, s);
-	int y = get_field_pos_line(f, s);
-
-
-
 	move(
-		cr->rx + get_field_pos_mod(f, s),
-		cr->ry + get_field_pos_line(f, s)
+		f->row->rx + get_field_pos_mod(f, s),
+		f->row->ry + get_field_pos_line(f, s)
 	);
-
-
 	buf_pos++;
-	printf("%c", *c);
-	r = field_char_check_edge(m,s);
 
+	printf("%c", *c);
+	r = field_char_check_edge(f->menu, s);
 	if (r.rc) {
-		move(cc->rx + s->border_padding_left + 1, cc->ry + r.rc + 1);
+		move(
+			f->column->rx + s->border_padding_left + 1,
+			f->column->ry + r.rc + 1
+		);
 	}
 
 /*
@@ -442,18 +413,13 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 }
 
 
-struct Result field_switch(struct menu *m, struct winsize *w, struct style *s)
+struct Result field_switch(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-	struct field *f = (struct field *)cr->data;
-
 	r = draw_field(f, s, (enum field_mode){ ENTRY });
 
-
-	move(cr->rx, cr->ry);
+	move(f->row->rx, f->row->ry);
 
 	// Is length param really necessary here?
 	printf("\033[0m%*s\033[0m\n", f->name_len, f->name);
@@ -463,11 +429,13 @@ struct Result field_switch(struct menu *m, struct winsize *w, struct style *s)
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
 */
-	move(cr->rx + f->name_len + s->text_divider_len, cr->ry);
+	move(f->row->rx + f->name_len + s->text_divider_len, f->row->ry);
 	if (f->value != f->placeholder) {
 		buf_pos = f->value_pos;
 		buf_len = f->value_len;
-//		printf("%s", f->value);
+
+		// This needs to leverage cascade
+		printf("%s", f->value);
 	} else {
 		buf_len = 0;
 		buf_pos = 0;
@@ -483,16 +451,16 @@ struct Result field_switch(struct menu *m, struct winsize *w, struct style *s)
 
 		switch (c) {
 			case ESCAPE:
-				r = field_escape(m, w, s);
+				r = field_escape(f, s);
 				break;
 			case ENTER:
-				r = field_enter(m, w, s);
+				r = field_enter(f, s);
 				return r;
 			case BACKSPACE:
-				r = field_backspace(m, w, s);
+				r = field_backspace(f, s);
 				break;
 			default:
-				r = field_char(m , w, s, &c);
+				r = field_char(f, s, &c);
 				break;
 		}
 		if (c == ENTER) break;
@@ -586,6 +554,10 @@ bool edge_detect(struct column *c, int ry)
 				} else {
 					break;
 				}
+			case MENU:
+				break;
+			case FIELD:
+				break;
 		}
 	}
 	return false;
@@ -597,7 +569,6 @@ struct Result set_edge_vertical_bar_left(struct menu *m,
 					 const int ry)
 {
 	struct Result r;
-	struct column *cc = m->cs[tc];
 
 	if (m->cc == 0) {
 		r.data = s->border->vertical;
@@ -643,9 +614,6 @@ struct Result set_edge_right_junction(struct menu *m,
 	r.msg = NULL;
 	r.data = NULL;
 
-	struct column *cc = m->cs[tc];
-	struct row *cr = cc->rs[cc->cr];
-
 	if (tc == 0) {
 		if (ry == 0) {
 			r.data = s->border->top_left;
@@ -678,9 +646,6 @@ struct Result set_edge_left_junction(struct menu *m,
 	r.msg = NULL;
 	r.data = NULL;
 
-	struct column *cc = m->cs[tc];
-	struct row *cr = cc->rs[cc->cr];
-
 	if (tc == m->nc - 1) {
 		if (ry == 0) {
 			r.data = s->border->top_right;
@@ -705,8 +670,8 @@ struct Result set_edge_left_junction(struct menu *m,
 
 int resolve_height(struct menu *m)
 {
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
+//	struct column *cc = m->cs[m->cc];
+//	struct row *cr = cc->rs[cc->cr];
 /*
 	if (cr->type == FIELD) {
 		struct field *f = (struct field *)cr->data;
