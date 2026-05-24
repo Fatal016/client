@@ -103,7 +103,7 @@ uint32_t utf8_decode(const char *c);
 
 struct Result field_char_check_edge(struct menu *m, struct style *s);
 
-struct Result field_char_shift(struct menu *m, struct style *s);
+struct Result field_char_shift(struct field *f, struct style *s);
 
 int get_field_pos(struct field *f, struct style *s);
 int get_field_pos_line(struct field *f, struct style *s);
