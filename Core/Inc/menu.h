@@ -69,7 +69,7 @@ struct field {
 
 
 	int name_len;
-	int value_len;
+	size_t value_len;
 
 	// Probably don't need this to be field bound since you're bound to entry
 	// if you're doing it	
