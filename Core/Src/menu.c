@@ -24,29 +24,54 @@ struct Result draw_menu(struct menu *m, struct style *s)
 	return r;
 }
 
-// Can accept extra mode var here?
-struct Result draw_field(struct field *f, struct style *s)
+struct Result init_field(struct field *f, struct row *cr)
 {
 	struct Result r;
-/*
-	if (p->mode == NULL) {
-		p->mode = TRAVERSE;
-	}
-*/
+
+	f->row = cr;
+	f->column = cr->column;
+	f->menu = cr->menu;
+
 	if (f->value == NULL) {
 		f->value = f->placeholder;
 	}
 
 	f->name_len = strlen(f->name);
 	f->value_len = strlen(f->value);
-//	p->len = p->name_len + s->text_divider_len + p->value_len;
 
-//	p->pos = p->name_len + s->text_divider_len + p->value_pos;
+	r.rc = 0;
+	return r;
+}
 
+struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
+{
+	struct Result r;
 
-	// Replace with generalized cascade
-	printf("%s%s%s", f->name, s->text_divider, f->value);
+	switch(fm) {
+		case ENTRY:
+			int h = get_field_height(f, s, fm);			
 
+			r = clear_field_box(f, s, fm);
+			r = draw_box_aware(
+				f->row,
+				h,
+				s
+			);
+			break;
+		case TRAVERSE:
+			// Replace with generalized cascade
+			printf("%s%s%s", f->name, s->text_divider, f->value);
+			break;
+	}
+	
+
+/*
+	printf(
+		"%s%s%.*s",
+		f->name, 
+		cr->sx - s->text_divider
+	)
+*/
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
 
@@ -57,6 +82,7 @@ struct Result draw_field(struct field *f, struct style *s)
 	return r;
 }
 
+// Do i need to pass menu down to this level or only column?
 struct Result draw_row(struct menu *m,
 		       struct winsize *w,
 		       struct style *s,
@@ -68,6 +94,11 @@ struct Result draw_row(struct menu *m,
 	struct column *cc = m->cs[tc];
 	struct row *cr = cc->rs[tr];
 
+	cr->column = cc;
+	cr->menu = m;
+
+	cr->index = tr;
+
 	move(cr->rx, cr->ry);
 
 	switch(cr->type) {
@@ -75,10 +106,15 @@ struct Result draw_row(struct menu *m,
 			r = draw_menu((struct menu *)cr->data, s);
 			break;
 		case FIELD:
-			r = draw_field((struct field *)cr->data, s);
+			r = init_field((struct field *)cr->data, cr);
+			r = draw_field(
+				(struct field *)cr->data,
+				s,
+				(enum field_mode){ TRAVERSE }
+			);
 			break;
 		case BREAK:
-			r = draw_horizontal_bar(m, s, tc, cr->ry);
+			r = draw_horizontal_bar(cc, cr->ry, s);
 	}
 
 	return r;
@@ -94,6 +130,9 @@ struct Result draw_column(struct menu *m,
 
 	struct column *cc = m->cs[tc];
 	struct row *cr;
+
+	cc->menu = m;
+	cc->index = tc;
 
 	for (int i = 0; i < cc->nr; i++) {
 
@@ -207,27 +246,31 @@ struct Result clear_horizontal_bar(struct menu *m,
 	return r;
 }
 
-struct Result draw_horizontal_bar(struct menu *m,
-				  struct style *s,
-				  int tc,
-				  int ry)
+struct Result draw_horizontal_bar(
+	struct column *c,
+	int ry,
+	struct style *s)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
+	move(c->rx, ry);
 
-	move(m->cs[tc]->rx, ry);
-
-	r = set_edge(m, s, tc, ry, s->border->right_junction);
+	r = set_edge(
+		c->menu,
+		s,
+		c->index,
+		ry,
+		s->border->right_junction
+	);
 	if (r.rc == 0) {
 		printf("%s", (char*)r.data);
 	}
 
-	for (int i = m->cs[tc]->rx + 1; i < m->cs[tc]->rx + m->cs[tc]->sx - 1; i++) {
+	for (int i = c->rx + 1; i < c->rx + c->sx - 1; i++) {
 		printf("%s", s->border->horizontal);
 	}
 
-	r = set_edge(m, s, tc, ry, s->border->left_junction);
+	r = set_edge(c->menu, s, c->index, ry, s->border->left_junction);
 	if (r.rc == 0) {
 		printf("%s", (char*)r.data);
 	}
@@ -408,7 +451,7 @@ struct Result field_style(struct menu *m,
 */
 	switch (mode) {
 		case TRAVERSE:
-			f->mode = TRAVERSE;
+			//f->mode = TRAVERSE;
 			move(cr->rx, cr->ry);
 			printf("\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
@@ -418,14 +461,16 @@ struct Result field_style(struct menu *m,
 			);
 			break;
 		case ENTRY:
-			f->mode = ENTRY;
-			r = init_field(m, w, s);
-//			clear_column(m);
+			//f->mode = ENTRY;
+			r = field_switch(m, w, s);
 
-//			prompt_style(m, w, s, TRAVERSE);
+			// Should modules perform their own cleanup? Unsure
+			clear_column(m);
 
-//			draw_column(m, w, s, m->cc);
-//			r = set_style(m, w, s);
+			field_style(m, w, s, TRAVERSE);
+
+			draw_column(m, w, s, m->cc);
+			r = set_style(m, w, s);
 			break;
 	}
 
@@ -513,25 +558,27 @@ if (menu->type == MENU) {
 	return r;
 }
 
-struct Result clear_field_box(struct menu *m, struct style *s)
+struct Result clear_field_box(
+	struct field *f,
+	struct style *s,
+	enum field_mode fm)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-	struct field *f = cr->data;
-
-	const int h = resolve_height(m);
+	int h = get_field_height(f, s, fm);
 
 	for (int i = 0; i < h; i++) {
 		if (i == 0) {
-			move(cr->rx + f->name_len + s->text_divider_len, cr->ry + i);
-			for (int j = 0; j < cr->sx - (f->name_len + s->text_divider_len); j++) {
+			move(
+				f->row->rx + f->name_len + s->text_divider_len,
+				f->row->ry + i
+			);
+			for (int j = 0; j < f->row->sx - (f->name_len + s->text_divider_len); j++) {
 				printf(" ");
 			}
 		} else {
-			move(cr->rx, cr->ry + i);
-			for (int j = 0; j < cr->sx; j++) {
+			move(f->row->rx, f->row->ry + i);
+			for (int j = 0; j < f->row->sx; j++) {
 				printf(" ");
 			}
 		}
@@ -542,7 +589,7 @@ struct Result clear_field_box(struct menu *m, struct style *s)
 	r.rc = 0;
 	return r;
 }
-
+/*
 struct Result clear_box(struct menu *m, struct style *s)
 {
 	struct Result r;
@@ -564,24 +611,23 @@ struct Result clear_box(struct menu *m, struct style *s)
 	r.rc = 0;
 	return r;
 }
-
-struct Result draw_box_aware(struct menu *m, struct style *s)
+*/
+struct Result draw_box_aware(
+	struct row *r,
+	int h,
+	struct style *s)
 {
-	struct Result r;
+	struct Result result;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	const int h = resolve_height(m);
-
-	r = draw_horizontal_bar(m, s, m->cc, cr->ry-1);
-	r = draw_horizontal_bar(m, s, m->cc, cr->ry + h);
+	result = draw_horizontal_bar(r->column, r->ry-1, s);
+	result = draw_horizontal_bar(r->column, r->ry + h, s);
 
 	fflush(stdout);
 
-	r.rc = 0;
-	return r;
+	result.rc = 0;
+	return result;
 }
+
 
 // Should add explicite repositioning for top and bottom to make sure it's in
 // the right place. Makes it more flexible if we can't rely on the newline
