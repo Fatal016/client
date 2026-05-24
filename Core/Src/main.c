@@ -316,13 +316,14 @@ struct Result field_char_shift(struct field *f, struct style *s)
 				printf(" ");
 			}
 			move(
-				f->row->rx + get_field_pos_mod(f, s) + 1,
+				f->row->rx + get_field_pos_mod(f, s),
 				f->row->ry + get_field_pos_line(f, s)
 			);
+
 			printf(
 				"%.*s",
-				f->row->sx - get_field_pos_mod(f, s) - 1,
-				buf + buf_pos + 1
+				f->row->sx - get_field_pos_mod(f, s),
+				buf + buf_pos
 			);
 		} else {
 			move(f->row->rx, f->row->ry + i);
@@ -356,22 +357,14 @@ struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s
 		);
 
 		buf_pos--;
+		buf_len--;
 
-		f->value_pos--;
-		f->value_len--;
-
-		// This has to be smarter. Be pos instead of val dependent
-		// Trailing text is staying there
-		// Need to generalize cascade before doing this, will make
-		// line by line reprint easier
-		r = field_char_check_edge(m, s);
-
-		printf("\033[D \033[D");
-		if (r.rc == 1) {
-			int test = get_field_pos_line(f, s);
-			move(cr->rx + cr->sx, cr->ry + test - 1);
-
-		}
+		r = field_char_shift(f, s);
+		
+		move(
+			cr->rx + get_field_pos_mod(f, s),
+			cr->ry + get_field_pos_line(f, s)
+		);
 	}
 
 	r.rc = 0;
@@ -412,14 +405,21 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 	int x = get_field_pos_mod(f, s);
 	int y = get_field_pos_line(f, s);
 
+
+
 	move(
 		cr->rx + get_field_pos_mod(f, s),
 		cr->ry + get_field_pos_line(f, s)
 	);
 
+
 	buf_pos++;
 	printf("%c", *c);
+	r = field_char_check_edge(m,s);
 
+	if (r.rc) {
+		move(cc->rx + s->border_padding_left + 1, cc->ry + r.rc + 1);
+	}
 
 /*
 	if (get_field_pos_line(m, s) >= p->height) {
