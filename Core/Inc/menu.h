@@ -37,6 +37,11 @@ struct pending {
 };
 
 struct row {
+	struct menu *menu;
+	struct column *column;
+
+	int index;
+
 	void *data;
 	enum row_type type;
 
@@ -48,12 +53,13 @@ struct row {
 
 	int sx;
 	int sy;
-
-	int height;
-	int height_set;
 }; 
 
 struct field {
+	struct menu *menu;
+	struct column *column;
+	struct row *row;
+
 	char *name;
 	char *placeholder;
 	bool read_only;
@@ -61,17 +67,26 @@ struct field {
 	char *value;
 	size_t value_pos;
 
-	int height;
 
 	int name_len;
 	int value_len;
 
 	// Probably don't need this to be field bound since you're bound to entry
 	// if you're doing it	
-	enum field_mode mode;
+	//enum field_mode mode;
+	
+	int min_entry_height;
+	int max_entry_height;
+
+	int min_traverse_height;
+	int max_traverse_height;
 };
 
 struct column {
+
+	struct menu *menu;
+
+	int index;
 
 	/* (r)ow(s) */
 	struct row **rs;
@@ -153,7 +168,7 @@ int max_size(struct menu*);
 
 //struct Result draw_box(int, int, int, int);
 struct Result draw_box_general(int, int, int, int, struct style *s);
-struct Result draw_box_aware(struct menu*, struct style *s);
+struct Result draw_box_aware(struct row*, int, struct style *s);
 
 struct Result draw_vertical_bar(int, int, int, struct style*);
 
@@ -163,7 +178,7 @@ struct Result draw_column(struct menu*, struct winsize*, struct style*, int);
 struct Result draw_row(struct menu*, struct winsize*, struct style*, int, int);
 
 struct Result draw_menu(struct menu*, struct style*);
-struct Result draw_field(struct field*, struct style*);
+struct Result draw_field(struct field*, struct style*, enum field_mode);
 
 int clear_style(struct menu*, struct winsize*);
 
@@ -176,15 +191,17 @@ struct Result scale_module(struct menu*, struct winsize*);
 struct Result draw_column_dividers(struct menu*, struct style *s);
 struct Result draw_dividers(struct menu*, struct style *s);
 
-struct Result draw_horizontal_bar(struct menu*, struct style*, int, int);
+struct Result draw_horizontal_bar(struct column*, int, struct style*);
 struct Result clear_horizontal_bar(struct menu*, struct style*, int, int);
 
 bool edge_detect(struct column*, int);
 
-const int resolve_height(struct menu*);
+int resolve_height(struct menu*);
 
 struct Result clear_box(struct menu *m, struct style *s);
 
-struct Result clear_field_box(struct menu *m, struct style *s);
+struct Result clear_field_box(struct field *f, struct style *s, enum field_mode fm);
+
+struct Result init_field(struct field *f, struct row *cr);
 
 #endif
