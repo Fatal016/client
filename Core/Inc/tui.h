@@ -83,9 +83,6 @@ struct Result field_escape(
 	struct style *style
 );
 
-
-struct Result init_field(struct menu*, struct winsize*, struct style *s);
-
 struct Result field_char(struct menu*, struct winsize*, struct style *s, int*);
 
 struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
@@ -108,13 +105,13 @@ struct Result field_char_check_edge(struct menu *m, struct style *s);
 
 struct Result field_char_shift(struct menu *m, struct style *s);
 
-int get_field_pos(struct menu *m, struct style *s);
-int get_field_pos_line(struct menu *m, struct style *s);
-int get_field_pos_mod(struct menu *m, struct style *s);
+int get_field_pos(struct field *f, struct style *s);
+int get_field_pos_line(struct field *f, struct style *s);
+int get_field_pos_mod(struct field *f, struct style *s);
 
-int get_field_len(struct menu *m, struct style *s);
-int get_field_len_line(struct menu *m, struct style *s);
-int get_field_len_mod(struct menu *m, struct style *s);
-
+int get_field_len(struct field *f, struct style *s);
+int get_field_len_line(struct field *f, struct style *s);
+int get_field_len_mod(struct field *f, struct style *s);
+int get_field_height(struct field *f, struct style *s, enum field_mode);
 
 #endif

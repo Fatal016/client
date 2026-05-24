@@ -11,8 +11,13 @@ struct column search_menu_search_column = {
 				.name = "Search",
 				.placeholder = "<Search Movies>",
 				.value_pos = 0,
-				.height = 1,
-				.read_only = false
+				.read_only = false,
+				
+				.min_traverse_height = 1,
+				.max_traverse_height = 1,
+
+				.min_entry_height = 1,
+				.max_entry_height = 0
 			},
 			.type = FIELD,
 		},
@@ -21,8 +26,13 @@ struct column search_menu_search_column = {
 				.name = "Test",
 				.placeholder = "<Placeholder>",
 				.value_pos = 0,
-				.height = 2,
-				.read_only = false
+				.read_only = false,
+
+				.min_traverse_height = 1,
+				.max_traverse_height = 1,
+
+				.min_entry_height = 1,
+				.max_entry_height = 2
 			},
 			.type = FIELD,
 		}
