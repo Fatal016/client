@@ -296,39 +296,45 @@ int get_field_len_mod(struct field *f, struct style *s)
 	return (f->name_len + s->text_divider_len + buf_len) % f->row->sx;
 }
 
-struct Result field_char_shift(struct menu *m, struct style *s)
+struct Result field_char_shift(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	struct field *f = (struct field *)cc->rs[cc->cr]->data;
-	
 	int pos = get_field_pos(f, s);
-	int lref = pos/cr->sx;
+	int lref = pos/f->row->sx;
 
 	int len = get_field_len(f, s);
-	int llen = len/cr->sx + 1;
+	int llen = len/f->row->sx + 1;
 
 	for (int i = get_field_pos_line(f, s); i < get_field_len_line(f, s); i++) {
 		if (i == lref) {
 			move(
-				cr->rx + get_field_pos_mod(f, s),
-				cr->ry + get_field_pos_line(f, s)
+				f->row->rx + get_field_pos_mod(f, s),
+				f->row->ry + get_field_pos_line(f, s)
 			);
-			for (int j = 0; j < cr->sx - get_field_pos_mod(f, s); j++) {
+			for (int j = 0; j < f->row->sx - get_field_pos_mod(f, s); j++) {
 				printf(" ");
 			}
-			move(cr->rx + get_field_pos_mod(f, s) + 1, cr->ry + get_field_pos_line(f, s));
-			printf("%.*s", cr->sx - get_field_pos_mod(f, s) - 1, buf + buf_pos + 1);
+			move(
+				f->row->rx + get_field_pos_mod(f, s),
+				f->row->ry + get_field_pos_line(f, s)
+			);
+
+			printf(
+				"%.*s",
+				f->row->sx - get_field_pos_mod(f, s),
+				buf + buf_pos
+			);
 		} else {
-			move(cr->rx, cr->ry + i);
-			for (int j = 0; j < cr->sx; j++) {
+			move(f->row->rx, f->row->ry + i);
+			for (int j = 0; j < f->row->sx; j++) {
 				printf(" ");
 			} 
-			move(cr->rx, cr->ry + i);
-			printf("%.*s", cr->sx, buf + (cr->sx - f->name_len - s->text_divider_len) + cr->sx * (i - 1));
+			move(f->row->rx, f->row->ry + i);
+			printf(
+				"%.*s",
+				f->row->sx,
+				buf + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1));
 		}
 	}
 	return r;
@@ -351,22 +357,14 @@ struct Result field_backspace(struct menu *m, struct winsize *w, struct style *s
 		);
 
 		buf_pos--;
+		buf_len--;
 
-		f->value_pos--;
-		f->value_len--;
-
-		// This has to be smarter. Be pos instead of val dependent
-		// Trailing text is staying there
-		// Need to generalize cascade before doing this, will make
-		// line by line reprint easier
-		r = field_char_check_edge(m, s);
-
-		printf("\033[D \033[D");
-		if (r.rc == 1) {
-			int test = get_field_pos_line(f, s);
-			move(cr->rx + cr->sx, cr->ry + test - 1);
-
-		}
+		r = field_char_shift(f, s);
+		
+		move(
+			cr->rx + get_field_pos_mod(f, s),
+			cr->ry + get_field_pos_line(f, s)
+		);
 	}
 
 	r.rc = 0;
@@ -397,7 +395,7 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 		buf[buf_pos] = *c;
 		buf_len++;
 
-		r = field_char_shift(m, s);
+		r = field_char_shift(f, s);
 	} else {
 		buf[buf_pos] = *c;
 		buf_len++;
@@ -407,14 +405,21 @@ struct Result field_char(struct menu *m, struct winsize *w, struct style *s, int
 	int x = get_field_pos_mod(f, s);
 	int y = get_field_pos_line(f, s);
 
+
+
 	move(
 		cr->rx + get_field_pos_mod(f, s),
 		cr->ry + get_field_pos_line(f, s)
 	);
 
+
 	buf_pos++;
 	printf("%c", *c);
+	r = field_char_check_edge(m,s);
 
+	if (r.rc) {
+		move(cc->rx + s->border_padding_left + 1, cc->ry + r.rc + 1);
+	}
 
 /*
 	if (get_field_pos_line(m, s) >= p->height) {
