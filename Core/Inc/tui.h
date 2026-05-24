@@ -52,38 +52,15 @@ struct Result menu_enter(
 	struct style *style
 );
 
-struct Result field_switch(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
-struct Result field_r_arrow(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
-struct Result field_l_arrow(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
-struct Result field_enter(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
-struct Result field_backspace(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
-struct Result field_escape(
-	struct menu *menu,
-	struct winsize *winsize,
-	struct style *style
-);
+struct Result field_switch(struct field *field, struct style *style);
+struct Result field_r_arrow(struct field *field, struct style *style);
+struct Result field_l_arrow(struct field *field, struct style *style);
+struct Result field_enter(struct field *field, struct style *style);
+struct Result field_backspace(struct field *field, struct style *style);
+struct Result field_escape(struct field *field, struct style *style);
+struct Result field_char(struct field *field, struct style *style, int*);
 
-struct Result field_char(struct menu*, struct winsize*, struct style *s, int*);
+
 
 struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
