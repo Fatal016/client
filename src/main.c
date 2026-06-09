@@ -20,10 +20,10 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 
-#include "../Inc/tui.h"
-#include "../Inc/menu.h"
-#include "../Inc/templates.h"
-#include "../Inc/style.h"
+#include "../include/tui.h"
+#include "../include/menu.h"
+#include "../include/templates.h"
+#include "../include/style.h"
 
 char buf[MAX_BUF];
 size_t buf_pos;

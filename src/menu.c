@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "../Inc/menu.h"
-#include "../Inc/tui.h"
-#include "../Inc/style.h"
+#include "../include/menu.h"
+#include "../include/tui.h"
+#include "../include/style.h"
 
 struct Result draw_menu(struct menu *m, struct style *s)
 {
