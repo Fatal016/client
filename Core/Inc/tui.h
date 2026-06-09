@@ -78,7 +78,7 @@ struct Result utf8_encode(uint32_t, char*);
 uint32_t utf8_decode(const char *c);
 //void print_utf8(uint32_t);
 
-struct Result field_char_check_edge(struct menu *m, struct style *s);
+struct Result field_char_check_edge(struct field *f, struct style *s);
 
 struct Result field_char_shift(struct field *f, struct style *s);
 
@@ -90,5 +90,12 @@ int get_field_len(struct field *f, struct style *s);
 int get_field_len_line(struct field *f, struct style *s);
 int get_field_len_mod(struct field *f, struct style *s);
 int get_field_height(struct field *f, struct style *s, enum field_mode);
+
+
+void field_cursor_shift(struct field *f, struct style *s);
+
+int get_field_mod(struct field *f, size_t *len, struct style *s);
+
+
 
 #endif

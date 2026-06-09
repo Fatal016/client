@@ -51,7 +51,16 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 
 	switch(fm) {
 		case ENTRY:
+			// Need to test shifting down all rows in a column on user entry
+			// When horizontal bar is shifted down, update sy of this row and then draw menu from row +1 onwards
+			// As efficient as it gets
+
+
+			// f->row->sy = f->max...
+
 			h = get_field_height(f, s, fm);			
+			f->row->sy = h;
+
 
 			r = clear_field_box(f, s, fm);
 			r = draw_box_aware(
@@ -61,6 +70,7 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 			);
 			break;
 		case TRAVERSE:
+			f->row->sy = f->min_traverse_height;
 			// Replace with generalized cascade
 			printf("%s%s%s", f->name, s->text_divider, f->value);
 			break;
@@ -84,77 +94,90 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 	return r;
 }
 
-// Do i need to pass menu down to this level or only column?
-struct Result draw_row(struct menu *m,
-		       struct winsize *w,
-		       struct style *s,
-		       int tc,
-		       int tr)
+struct Result draw_row(
+	struct row *r,
+	struct style *s)
 {
-	struct Result r;
+	struct Result result;
 	
-	struct column *cc = m->cs[tc];
-	struct row *cr = cc->rs[tr];
+	move(r->rx, r->ry);
 
-	cr->column = cc;
-	cr->menu = m;
-
-	cr->index = tr;
-
-	move(cr->rx, cr->ry);
-
-	switch(cr->type) {
+	switch(r->type) {
 		case MENU:
-			r = draw_menu((struct menu *)cr->data, s);
+			result = draw_menu((struct menu *)r->data, s);
 			break;
 		case FIELD:
-			r = init_field((struct field *)cr->data, cr);
-			r = draw_field(
-				(struct field *)cr->data,
+			result = init_field((struct field *)r->data, r);
+			result = draw_field(
+				(struct field *)r->data,
 				s,
 				(enum field_mode){ TRAVERSE }
 			);
 			break;
 		case BREAK:
-			r = draw_horizontal_bar(cc, cr->ry, s);
+			result = draw_horizontal_bar(r->column, r->ry, s);
 	}
 
-	return r;
+	return result;
 }
 
-struct Result draw_column(struct menu *m,
-			  struct winsize *w,
-			  struct style *s,
-			  int tc)
+struct Result draw_column(
+	struct column *c,
+	struct style *s)
 {
-	struct Result r;
+	struct Result result;
+
+	struct row *r;
+
 	int max_size = 0;
 
-	struct column *cc = m->cs[tc];
-	struct row *cr;
+	for (int i = 0; i < c->nr; i++) {
 
-	cc->menu = m;
-	cc->index = tc;
+		r = c->rs[i];
+		r->rx = c->rx + 1 + s->border_padding_left;
+		if (i > 0) {
+			r->ry = c->rs[i-1]->ry + c->rs[i-1]->sy;
+		} else {
+			r->ry = c->ry + 1;
+		}
 
-	for (int i = 0; i < cc->nr; i++) {
 
-		cr = cc->rs[i];
+//		cr->rx = cc->rx + 1 + s->border_padding_left;
+/*
+		if (i > 0) {
+			switch(cc->rs[i-1]->type) {
+				case FIELD:
+					cr->ry = ()
+					break;
+				default:
+					cr->ry = cc->ry + 1 + i;
+			}
+		} else {
+*/
+//			cr->ry = cc->ry + 1 + i 
+/*
+		}
+*/
 
-		cr->rx = cc->rx + 1 + s->border_padding_left;
-		cr->ry = cc->ry + 1 + i;
 
-		cr->sx = cc->sx - (2 + s->border_padding);
-		cr->sy = 1;
 
-		r = draw_row(m, w, s, tc, i);
-		if (r.rc != 0) return r;
-		if (*(int *)r.data > max_size) {
-			max_size = *(int *)r.data;
+//		cr->ry = cc->ry + 1 + i;
+
+		r->column = c;
+		r->menu = c->menu;
+
+		r->sx = c->sx - (2 + s->border_padding);
+		r->sy = 1;
+
+		result = draw_row(r, s);
+		if (result.rc != 0) return result;
+		if (*(int *)result.data > max_size) {
+			max_size = *(int *)result.data;
 		}
 	}
 
-	r.rc = 0;
-	return r;
+	result.rc = 0;
+	return result;
 }
 
 struct Result init_module(struct menu *m, struct winsize *w)
@@ -217,14 +240,16 @@ struct Result scale_module(struct menu *m, struct winsize *w)
 }
 
 
-struct Result clear_horizontal_bar(struct menu *m,
-				   struct style *s,
-				   int tc,
-				   int ry)
+struct Result clear_horizontal_bar(
+	struct column *c,
+	int ry,
+	struct style *s)
 {
-	struct Result r;
+	struct Result result;
 
-	move(m->cs[tc]->rx, ry);
+
+	move(c->rx, ry);
+//	move(m->cs[tc]->rx, ry);
 
 //	r = set_edge(m, s, tc, ry, s->border->vertical);
 
@@ -235,7 +260,7 @@ struct Result clear_horizontal_bar(struct menu *m,
 */
 
 
-	for (int i = m->cs[tc]->rx + 1; i < m->cs[tc]->rx + m->cs[tc]->sx; i++) {
+	for (int i = c->rx + 1; i < c->rx + c->sx; i++) {
 		printf("%s", " ");
 	}
 /*
@@ -244,8 +269,8 @@ struct Result clear_horizontal_bar(struct menu *m,
 		printf("%s", (char *)r.data);
 	}
 */
-	r.rc = 0;
-	return r;
+	result.rc = 0;
+	return result;
 }
 
 struct Result draw_horizontal_bar(
@@ -336,6 +361,8 @@ struct Result draw_dividers(struct menu *m, struct style *s)
 struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 {
 	struct Result r;
+	struct column *c;
+
 
 	init_module(m, w);
 	scale_module(m, w);
@@ -364,7 +391,13 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 */
 
 	for (int i = 0; i < m->nc; i++) {
-		r = draw_column(m, w, s, i);
+
+		c = m->cs[i];
+
+		c->menu = m;
+		c->index = i;
+
+		r = draw_column(c, s);
 		if (r.rc != 0) return r;
 		if (r.data != NULL) {
 			if (*(int *)r.data > m->sx) {
@@ -471,7 +504,7 @@ struct Result field_style(struct menu *m,
 
 			field_style(m, w, s, TRAVERSE);
 
-			draw_column(m, w, s, m->cc);
+			draw_column(cc, s);
 			r = set_style(m, w, s);
 			break;
 	}

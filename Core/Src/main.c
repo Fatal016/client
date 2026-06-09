@@ -1,3 +1,15 @@
+// Next up
+// Further generalize/refactor cascade to accomodate arbitrary row writes
+// To rewrite on ENTRY longer text
+// Also need to write superset function or something for .../... on row limit
+// ^ Then... navigation/rendering for .../... overwrite
+
+
+
+// Re-incorporating menu navigation
+// Building out build_/write_ functions to accomodate multi-line fields/items
+// ^ once done, 
+
 #include <stdio.h> // eliminate
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,8 +39,10 @@ int main(int argc, char** argv)
 				&BORDER_SINGLE,
 				&BLACK_AND_WHITE,
 				": ",
-				3,
-				4
+//				3,
+//				4
+				0,
+				0
 	);
 
 	/* Initialization */
@@ -190,21 +204,36 @@ struct Result field_escape(struct field *f, struct style *s)
 		if (c == 'C') {
 			if (buf_pos < buf_len) {
 				buf_pos++;
-				r = field_char_check_edge(f->menu, s);
+				field_cursor_shift(f, s);
+
+/*
+				r = field_char_check_edge(f, s);
 				if (r.rc) {
-					move(f->column->rx + s->border_padding_left, f->row->ry + r.rc);
+					move(
+						f->column->rx + s->border_padding_left,
+						f->row->ry + r.rc
+					);
 				}
 				printf("\033[1C");
+*/
 			}
 		} else if (c == 'D') {
 			if (buf_pos > 0) {
-				r = field_char_check_edge(f->menu, s);
+//				r = field_char_check_edge(f, s);
 				buf_pos--;
+				printf("\b");
+
+				field_cursor_shift(f, s);
+/*
 				if (r.rc) {
-					move(f->row->rx + f->row->sx - 1, f->row->ry + r.rc - 1);
+					move(
+						f->row->rx + f->row->sx - 1,
+						f->row->ry + r.rc - 1
+					);
 				} else {
 					printf("\b");
 				}
+*/
 			}
 
 		}
@@ -214,18 +243,24 @@ struct Result field_escape(struct field *f, struct style *s)
 	return r;
 }
 
-struct Result field_char_check_edge(struct menu *m, struct style *s)
+struct Result field_char_check_edge(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	struct field *f = (struct field *)cc->rs[cc->cr]->data;
-
 	int num = (f->name_len + s->text_divider_len + buf_pos);
-	int den = cr->sx;
+	int den = f->row->sx;
 
+// Meed to have this let shift only occur after +1 to mod.
+// Want to have cursor end of line for sake of limitations
+/*
+	// If right edge
+	if (get_field_pos_mod(f, s) == f->row->sx) {
+		num++;
+//		num--;
+	} else {
+		num--;
+	}
+*/
 	if (num % den == 0) {
 		r.rc = num/den;
 		return r;
@@ -235,13 +270,29 @@ struct Result field_char_check_edge(struct menu *m, struct style *s)
 	return r;
 }
 
+void field_cursor_shift(struct field *f, struct style *s)
+{
+	if (get_field_pos_mod(f, s) == 0) {
+		move(
+			f->row->rx + f->row->sx,
+			f->row->ry + get_field_pos_line(f, s) - 1
+		);
+	} else {
+		move(
+			f->row->rx + get_field_pos_mod(f, s),
+			f->row->ry + get_field_pos_line(f, s)
+		);
+	}
+}
+
+
 int get_field_height(struct field *f, struct style *s, enum field_mode fm)
 {
 	int h = 0;
 
 	switch (fm) {
 		case ENTRY:
-			if (f->min_entry_height > get_field_len(f, s)) {
+			if (f->min_entry_height > get_field_len_line(f, s)) {
 				h = f->min_entry_height;
 			} else {
 				h = get_field_len_line(f, s);
@@ -276,7 +327,12 @@ int get_field_len(struct field *f, struct style *s)
 
 int get_field_len_line(struct field *f, struct style *s)
 {
-	return (f->name_len + s->text_divider_len + buf_len)/f->row->sx + 1;
+	if (!get_field_len_mod(f, s)) {
+		return (f->name_len + s->text_divider_len + buf_len)/f->row->sx;
+	} else {
+		return (f->name_len + s->text_divider_len + buf_len)/f->row->sx + 1;
+	}
+//	return (f->name_len + s->text_divider_len + buf_len)/f->row->sx + 1;
 }
 
 int get_field_len_mod(struct field *f, struct style *s)
@@ -284,15 +340,86 @@ int get_field_len_mod(struct field *f, struct style *s)
 	return (f->name_len + s->text_divider_len + buf_len) % f->row->sx;
 }
 
+
+/*
+int get_field_mod(struct field *f, size_t *len, struct style *s)
+{
+	return (f->name_len + s->text_divider_len + len) % f->row->sx;
+}
+*/
+
+
+
+
+
+
+
+
+/*
+xref
+(implicite x upper bound)
+buffer to write from
+buffer index to start at
+
+internal logic for max lines (calc from field height calc)
+*/
+
+// sy = 0
+// ey = get_field_height(f, s, (enum field_mode){ ENTRY})
+// sx = f->name_len + s->text_divider_len
+
+/* Original
+f -> f
+sy -> get_field_pos_line(f, s)
+ey -> get_field_len_line(f, s)
+sx -> f->row->rx + get_field_pos_mod(f, s)
+buf -> buf + buf_pos
+buf_len -> buf_len - buf_pos
+s -> s
+*/
+
+// This is more annoying to write than i was expecting
+/*
+struct Result write_field_content(struct field *f, struct style *s)
+{
+	struct Result result;
+
+	for (
+		int i = 0;
+		i < get_field_height(f, s, (enum field_mode { ENTRY }));
+		i++)
+	{
+		if (i == sy) {
+			move(
+				f->row->rx + sx,
+				f->row->ry + sy
+			);
+		}
+		for (
+			int j = 0;
+			j < f->row->sx - get_field_mod(f, vlen, s),
+			j++)
+		{
+			printf(" ");
+		}
+		move(
+			f->row->rx + get_field_mod(f, vlen, )
+		)
+	}
+}
+*/
+
+
+// This needs to be smarter where it detects whether a shift is occuring
+// Would make char inserts much faster
 struct Result field_char_shift(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	int pos = get_field_pos(f, s);
-	int lref = pos/f->row->sx;
-
+	// get_field_len_line needs to be decremented __after__ this loop
+	// Otherwise have a straggling char
 	for (int i = get_field_pos_line(f, s); i < get_field_len_line(f, s); i++) {
-		if (i == lref) {
+		if (i == get_field_pos_line(f, s)) {
 			move(
 				f->row->rx + get_field_pos_mod(f, s),
 				f->row->ry + get_field_pos_line(f, s)
@@ -319,8 +446,10 @@ struct Result field_char_shift(struct field *f, struct style *s)
 			printf(
 				"%.*s",
 				f->row->sx,
-				buf + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1));
+				buf + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1)
+			);
 		}
+
 	}
 
 	r.rc = 0;
@@ -339,14 +468,11 @@ struct Result field_backspace(struct field *f, struct style *s)
 		);
 
 		buf_pos--;
-		buf_len--;
+		printf("\b \b");
 
 		r = field_char_shift(f, s);
-		
-		move(
-			f->row->rx + get_field_pos_mod(f, s),
-			f->row->ry + get_field_pos_line(f, s)
-		);
+		field_cursor_shift(f, s);
+		buf_len--;
 	}
 
 	r.rc = 0;
@@ -357,57 +483,61 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 {
 	struct Result r;
 
+	// Only accept base ascii chars
 	if (*c < 32 || *c > 126) {
 		r.rc = 0;
 		return r;
 	}
 
+
+	/* Not a fan of this code */
+
+	// Need to do something here other than iterating buf_len
+	// Either generalized function or something else
+	buf_len++;
+	if (
+		get_field_len_line(f, s) > f->max_entry_height
+		&& f->max_entry_height != 0
+	) {
+		buf_len--;
+		r.rc = 0;
+		return r;
+	} else {
+		buf_len--;
+	}
+	buf_len++;
+	if (get_field_len_line(f, s) > f->row->sy) {
+		r = clear_horizontal_bar(
+			f->column,
+			f->row->ry + f->row->sy,
+			s
+		);
+
+		f->row->sy++;
+		r = draw_horizontal_bar(
+			f->column,
+			f->row->ry + f->row->sy,
+			s
+		);
+	}
+	buf_len--;
+
+	// Need to incorporate edge test here before iterating
 	if (buf_pos < buf_len) {
 		memmove(
 			&buf[buf_pos + 1],
 			&buf[buf_pos],
 			buf_len - buf_pos
 		);
-		buf[buf_pos] = *c;
-		buf_len++;
+	}
 
-		r = field_char_shift(f, s);
-	} else {
-		buf[buf_pos] = *c;
-		buf_len++;
-	} 
+	buf[buf_pos] = *c;
+	buf_len++;
 
-	move(
-		f->row->rx + get_field_pos_mod(f, s),
-		f->row->ry + get_field_pos_line(f, s)
-	);
+	r = field_char_shift(f, s);
 	buf_pos++;
+	field_cursor_shift(f, s);
 
-	printf("%c", *c);
-	r = field_char_check_edge(f->menu, s);
-	if (r.rc) {
-		move(
-			f->column->rx + s->border_padding_left + 1,
-			f->column->ry + r.rc + 1
-		);
-	}
-
-/*
-	if (get_field_pos_line(m, s) >= p->height) {
-		r = clear_horizontal_bar(m, s, m->cc, cr->ry + get_field_len_line(m, s) - 1);
-	}
-*/
-/*	
-	if (p->cr == p->height) {
-		r = clear_horizontal_bar(m, s, m->cc, cr->ry + p->cr-1);
-		p->height += 5;
-
-		printf("\n\033[%dG", cc->rx + 2);
-
-
-		draw_box_aware(m, s);
-	}
-*/
 	r.rc = 0;
 	return r;
 }
@@ -434,6 +564,14 @@ struct Result field_switch(struct field *f, struct style *s)
 		buf_pos = f->value_pos;
 		buf_len = f->value_len;
 
+
+		int temp = buf_pos;
+		
+		buf_pos = 0;
+		r = field_char_shift(f, s);
+
+		buf_pos = temp;
+
 		// This needs to leverage cascade
 		printf("%s", f->value);
 	} else {
@@ -441,6 +579,10 @@ struct Result field_switch(struct field *f, struct style *s)
 		buf_pos = 0;
 //		p->value_len = 0;
 	}
+
+
+//	f->row->sy = f->
+//	Need to trigger menu redraw here to shift other rows down
 
 
 	printf(CURSOR_SHOW);

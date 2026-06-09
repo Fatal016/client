@@ -174,8 +174,8 @@ struct Result draw_vertical_bar(int, int, int, struct style*);
 
 
 struct Result draw_module(struct menu*, struct winsize*, struct style*);
-struct Result draw_column(struct menu*, struct winsize*, struct style*, int);
-struct Result draw_row(struct menu*, struct winsize*, struct style*, int, int);
+struct Result draw_column(struct column *c, struct style*);
+struct Result draw_row(struct row *r, struct style*);
 
 struct Result draw_menu(struct menu*, struct style*);
 struct Result draw_field(struct field*, struct style*, enum field_mode);
@@ -192,7 +192,7 @@ struct Result draw_column_dividers(struct menu*, struct style *s);
 struct Result draw_dividers(struct menu*, struct style *s);
 
 struct Result draw_horizontal_bar(struct column*, int, struct style*);
-struct Result clear_horizontal_bar(struct menu*, struct style*, int, int);
+struct Result clear_horizontal_bar(struct column*, int, struct style*);
 
 bool edge_detect(struct column*, int);
 
