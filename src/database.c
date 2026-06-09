@@ -3,7 +3,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../Inc/database.h"
+#include "../include/database.h"
 
 struct Result manage_search_cache_table(sqlite3 *db, char *sql, State *state, const void *data)
 {	

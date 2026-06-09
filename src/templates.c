@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "../Inc/menu.h"
-#include "../Inc/templates.h"
+#include "../include/menu.h"
+#include "../include/templates.h"
 
 struct column search_menu_search_column = {
 	ROWS (

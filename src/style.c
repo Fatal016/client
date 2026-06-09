@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../Inc/style.h"
+#include "../include/style.h"
 
 struct border_style BORDER_SINGLE = {
 	.top_left = "\u250C",

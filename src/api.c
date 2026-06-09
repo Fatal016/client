@@ -4,8 +4,8 @@
 
 #include <curl/curl.h>
 
-#include "../Inc/cJSON.h"
-#include "../Inc/database.h"
+#include "../include/cJSON.h"
+#include "../include/database.h"
 
 #include <sqlite3.h>
 
