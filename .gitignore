@@ -1,5 +1,8 @@
 *.swo
 *.swp
 
+*.o
+
+*.bin
 *.db
 *.bin
