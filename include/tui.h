@@ -9,8 +9,6 @@
 #define RIGHT_ARROW	67
 #define LEFT_ARROW	68
 
-#define MAX_BUF		2048
-
 #define CLEAR_DISPLAY "\033[2J\033[H"
 
 #define CURSOR_STYLE "\033[2 q"
@@ -80,22 +78,25 @@ uint32_t utf8_decode(const char *c);
 
 struct Result field_char_check_edge(struct field *f, struct style *s);
 
-struct Result field_char_shift(struct field *f, struct style *s);
+struct Result field_char_shift(
+	struct field *f,
+	char *buffer,
+	size_t pos,
+	size_t len,
+	struct style *s);
 
-int get_field_pos(struct field *f, struct style *s);
-int get_field_pos_line(struct field *f, struct style *s);
-int get_field_pos_mod(struct field *f, struct style *s);
+//int get_field_pos(struct field *f, size_t*, struct style *s);
+int get_field_pos_line(struct field *f, size_t, struct style *s);
+int get_field_pos_mod(struct field *f, size_t, struct style *s);
 
-int get_field_len(struct field *f, struct style *s);
-int get_field_len_line(struct field *f, struct style *s);
-int get_field_len_mod(struct field *f, struct style *s);
+int get_field_len(struct field *f, size_t, struct style *s);
+int get_field_len_line(struct field *f, size_t, struct style *s);
+int get_field_len_mod(struct field *f, size_t, struct style *s);
 int get_field_height(struct field *f, struct style *s, enum field_mode);
 
 
 void field_cursor_shift(struct field *f, struct style *s);
 
 int get_field_mod(struct field *f, size_t *len, struct style *s);
-
-
 
 #endif

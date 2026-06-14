@@ -196,8 +196,6 @@ struct Result clear_horizontal_bar(struct column*, int, struct style*);
 
 bool edge_detect(struct column*, int);
 
-int resolve_height(struct menu*);
-
 struct Result clear_box(struct menu *m, struct style *s);
 
 struct Result clear_field_box(struct field *f, struct style *s, enum field_mode fm);
