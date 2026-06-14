@@ -8,6 +8,7 @@
 #include "../include/menu.h"
 #include "../include/tui.h"
 #include "../include/style.h"
+#include "../include/buffer.h"
 
 struct Result draw_menu(struct menu *m, struct style *s)
 {
@@ -71,19 +72,12 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 			break;
 		case TRAVERSE:
 			f->row->sy = f->min_traverse_height;
-			// Replace with generalized cascade
-			printf("%s%s%s", f->name, s->text_divider, f->value);
+			printf("%s%s", f->name, s->text_divider);
+			r = field_char_shift(f, f->value, 0, f->value_len, s);
 			break;
 	}
 	
 
-/*
-	printf(
-		"%s%s%.*s",
-		f->name, 
-		cr->sx - s->text_divider
-	)
-*/
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
 
@@ -619,29 +613,7 @@ struct Result clear_field_box(
 	r.rc = 0;
 	return r;
 }
-/*
-struct Result clear_box(struct menu *m, struct style *s)
-{
-	struct Result r;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-
-	const int h = resolve_height(m);
-
-	for (int i = 0; i < h; i++) {
-		move(cc->rx + 1, cr->ry + i);
-		for (int j = 0; j < cc->sx - 2; j++) {
-			printf(" ");
-		}
-	}
-
-	fflush(stdout);
-
-	r.rc = 0;
-	return r;
-}
-*/
 struct Result draw_box_aware(
 	struct row *r,
 	int h,
