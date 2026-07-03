@@ -182,8 +182,9 @@ struct Result draw_field(struct field*, struct style*, enum field_mode);
 
 int clear_style(struct menu*, struct winsize*);
 
-struct Result set_style(struct menu*, struct winsize*, struct style *s);
-struct Result field_style(struct menu*, struct winsize*, struct style *s, enum field_mode);
+struct Result set_style(struct row*, struct style *s);
+
+struct Result set_style_field(struct field*, enum field_mode, struct style *s);
 
 struct Result init_module(struct menu*, struct winsize*);
 struct Result scale_module(struct menu*, struct winsize*);
@@ -201,5 +202,8 @@ struct Result clear_box(struct menu *m, struct style *s);
 struct Result clear_field_box(struct field *f, struct style *s, enum field_mode fm);
 
 struct Result init_field(struct field *f, struct row *cr);
+
+struct Result unset_style(struct row *r, struct style *s);
+struct Result unset_style_field(struct field *f, struct style *s);
 
 #endif
