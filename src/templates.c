@@ -13,15 +13,17 @@ struct column search_menu_search_column = {
 				.value_pos = 0,
 				.read_only = false,
 				
-				.min_traverse_height = 2,
-				.max_traverse_height = 2,
+				.min_traverse_height = 1,
+				.max_traverse_height = 1,
 
-				// This isn't toggling properly on entry
 				.min_entry_height = 1,
 				.max_entry_height = 2
 
 			},
 			.type = FIELD,
+		},
+		&(struct row) {
+			.type = BREAK
 		},
 		&(struct row) {
 			.data = &(struct field) {

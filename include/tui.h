@@ -62,7 +62,7 @@ struct Result field_char(struct field *field, struct style *style, int*);
 
 struct Result draw_next_menu(struct menu**, struct winsize*, struct style *);
 
-void clear_column(struct menu*);
+void clear_column(struct column*);
 
 struct Result set_edge_vertical_bar(struct menu*, struct style *, const int tc, const int ry);
 struct Result set_edge_vertical_bar_left(struct menu*, struct style *s, const int tc, const int ry);
@@ -98,5 +98,8 @@ int get_field_height(struct field *f, struct style *s, enum field_mode);
 void field_cursor_shift(struct field *f, struct style *s);
 
 int get_field_mod(struct field *f, size_t *len, struct style *s);
+
+struct Result menu_d_arrow(struct menu *m, struct style *s);
+struct Result menu_u_arrow(struct menu *m, struct style *s);
 
 #endif

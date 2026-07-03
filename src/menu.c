@@ -126,7 +126,6 @@ struct Result draw_column(
 	int max_size = 0;
 
 	for (int i = 0; i < c->nr; i++) {
-
 		r = c->rs[i];
 		r->rx = c->rx + 1 + s->border_padding_left;
 		if (i > 0) {
@@ -135,32 +134,12 @@ struct Result draw_column(
 			r->ry = c->ry + 1;
 		}
 
-
-//		cr->rx = cc->rx + 1 + s->border_padding_left;
-/*
-		if (i > 0) {
-			switch(cc->rs[i-1]->type) {
-				case FIELD:
-					cr->ry = ()
-					break;
-				default:
-					cr->ry = cc->ry + 1 + i;
-			}
-		} else {
-*/
-//			cr->ry = cc->ry + 1 + i 
-/*
-		}
-*/
-
-
-
-//		cr->ry = cc->ry + 1 + i;
-
 		r->column = c;
 		r->menu = c->menu;
 
 		r->sx = c->sx - (2 + s->border_padding);
+
+		// Defaulting row height to 1
 		r->sy = 1;
 
 		result = draw_row(r, s);
@@ -407,32 +386,24 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 	r.rc = 0;
 	return r;
 }
+
 /*
-int draw_field(struct menu_t *menu) { struct winsize w;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-	int size_x = w.ws_col - 2;
-	int size_y = w.ws_row - 2;
-
-	if (w.ws_col > menu->size_x) {
-		size_x = menu->size_x;
+struct Result clear_style(struct row *r, struct style *s)
+{
+	switch(r->type) {
+		case MENU:
+			
+			break;
+		case FIELD:
+			break;
+		default:
+			break;
 	}
-
-	if (w.ws_row > menu->size_y) {
-		size_y = menu->size_y;
-	}
-	draw_box(size_x, size_y, menu->ref_x, menu->ref_y);
-	
-	for (int i = 0; i < size_y; i++) {
-		moveCursor(menu->ref_x + 2, menu->ref_y + 1 + i);
-		wprintf(L"%ls %ls", ((struct field_t**)menu->items)[i + menu->item_offset]->field_name, ((struct field_t**)menu->items)[i + menu->item_offset]->field_value);
-	}
-	return 0;
 }
 */
 /*
-int clear_style(struct menu_t *menu, struct winsize *w) {
-	
+struct Result clear_style(struct menu *m, struct winsize *w, struct style *s)
+{	
 	if (menu->cur_y > w->ws_row - 2) {
 		moveCursor(menu->ref_x + 1, menu->ref_y + w->ws_row - 2);
 	} else {
@@ -463,25 +434,39 @@ int clear_style(struct menu_t *menu, struct winsize *w) {
 }
 */
 
-struct Result field_style(struct menu *m,
-			   struct winsize *w,
-			   struct style *s,
-			   enum field_mode mode)
+struct Result unset_style_field(struct field *f, struct style *s)
 {
-	struct Result r;
+	struct Result result;
 
-	struct column *cc = m->cs[m->cc];
-	struct row *cr = cc->rs[cc->cr];
-	struct field *f = (struct field *)cr->data;
+	move(
+		f->row->rx + s->border_padding_left,
+		f->row->ry
+	);
+
+	printf(
+		"\033[0m%s",
+		f->name
+	);
+
+	result.rc = 0;
+	return result;
+}
+
+struct Result set_style_field(struct field *f,
+	enum field_mode fm,
+	struct style *s)
+{
+	struct Result result;
+
 /*
 	int ypos;
 	if (cc->cr > w->ws_row - 2) ypos = cc->ry + w->ws_row - 2;
 	else ypos = cc->ry + cc->cr + 1;
 */
-	switch (mode) {
+	switch (fm) {
 		case TRAVERSE:
 			//f->mode = TRAVERSE;
-			move(cr->rx, cr->ry);
+			move(f->row->rx, f->row->ry);
 			printf("\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
 				s->text->background,
@@ -491,95 +476,68 @@ struct Result field_style(struct menu *m,
 			break;
 		case ENTRY:
 			//f->mode = ENTRY;
-			r = field_switch(f, s);
+			result = field_switch(f, s);
 
 			// Should modules perform their own cleanup? Unsure
-			clear_column(m);
+			clear_column(f->row->column);
 
-			field_style(m, w, s, TRAVERSE);
+			set_style_field(f, TRAVERSE, s);
 
-			draw_column(cc, s);
-			r = set_style(m, w, s);
+			draw_column(f->row->column, s);
+			result = set_style(f->row, s);
 			break;
 	}
 
 	fflush(stdout);
 
-	r.rc = 0;
-	return r;
+	result.rc = 0;
+	return result;
+
 }
 
-struct Result set_style(struct menu *m, struct winsize *w, struct style *s)
+struct Result unset_style(struct row *r, struct style *s)
 {
-	// Handles default style case for row type
-	// for menu-switch, etc.
-	// More granular styling managed in directional (arrows,etc.) switch cases
+	struct Result result;
 
-	struct Result r;
-	struct column *cc = m->cs[m->cc];
-
-	if (cc->cr > w->ws_row - 2) {
-		move(cc->rx + 1, cc->ry + w->ws_row - 2);
-	} else {
-		move(cc->rx + 2, cc->ry + cc->cr + 1);
+	switch(r->type) {
+		case FIELD:
+			result = unset_style_field(
+				(struct field *)r->data,
+				s
+			);
+			break;
 	}
 
+	result.rc = 0;
+	return result;
+}
 
-	switch (cc->rs[cc->cr]->type) {
+struct Result set_style(struct row *r, struct style *s)
+{
+	struct Result result;
+
+	switch(r->type) {
 		case MENU:
 			printf(
 				"\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
 				s->text->background,
-				m->sx,
-				((struct menu *)cc->rs[cc->cr]->data)->pn
+				r->sx,
+				((struct menu *)r->data)->pn
 			);
 			break;
 		case FIELD:
-			r = field_style(
-				m,
-				w,
-				s,
-				(enum field_mode){ TRAVERSE }
-			); // update once done testing
-//			wprintf(L"\033[30;47m%*s\033[0m\n", )
-
-	//		wprintf(L"\033[30;47m%*s\033[0m\n", m->sx, ((struct menu_t *)cc->rs[cc->tr]->data)->pn);
+			result = set_style_field(
+				(struct field *)r->data,
+				(enum field_mode){ TRAVERSE },
+				s
+			); 
 		default:
 			break;
 	}
 
-/*
-	if (cc->tr > w->ws_row - 2) {
-		moveCursor(cc->rx + 1, cc->ry + w->ws_row - 2);
-	} else {
-		moveCursor(cc->rx + 1, cc->ry + cc->tr + 1);
-	}
-*/
-/*
-	if (menu->cur_y > w->ws_row - 2) {
-		moveCursor(menu->ref_x + 1, menu->ref_y + w->ws_row - 2);
-	} else {
-		moveCursor(menu->ref_x + 1, menu->ref_y + menu->cur_y);
-	}
-*/
-/*
-	switch (cc->rs[cc->tr]->type) {
-		case MENU:
-			wprintf(L"\033[30m %s", ((struct menu_t *)cc->rs[cc->tr]->data)->pn);
-			break;
-	}
-*/
-/*
-if (menu->type == MENU) {
-		wprintf(L"\033[30m %ls", ((struct menu_t**)menu->items)[menu->cur_y - 1]->pretty_name);
-	} else if (menu->type == FIELD) {
-		wprintf(L"\033[30m %ls", ((struct field_t**)menu->items)[menu->cur_y - 1]->field_name);
-	}
-	return 0;
-*/
-	r.rc = 0;
-	return r;
+	result.rc = 0;
+	return result;
 }
 
 struct Result clear_field_box(

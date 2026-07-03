@@ -3,6 +3,7 @@ CFLAGS = -Wall -Wextra -std=c99 -pedantic -Wmissing-prototypes -Wstrict-prototyp
 
 CC_SOURCES = \
 src/main.c \
+src/tui.c \
 src/menu.c \
 src/templates.c \
 src/database.c \
