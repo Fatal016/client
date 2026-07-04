@@ -279,16 +279,19 @@ struct Result field_char_check_edge(struct field *f, struct style *s)
 
 void field_cursor_shift(struct field *f, struct style *s)
 {
-	if (get_field_pos_mod(f, buf_pos, s) == 0) {
-		move(
-			f->row->rx + f->row->sx,
-			f->row->ry + get_field_pos_line(f, buf_pos, s) - 1
-		);
-	} else {
-		move(
-			f->row->rx + get_field_pos_mod(f, buf_pos, s),
-			f->row->ry + get_field_pos_line(f, buf_pos, s)
-		);
+	if (f->value_offset <= 0) {
+		// Ensures that cursor remains at end of line instead of jumping down
+		if (get_field_pos_mod(f, buf_pos, s) == 0) {
+			move(
+				f->row->rx + f->row->sx,
+				f->row->ry + get_field_pos_line(f, buf_pos, s) - 1
+			);
+		} else {
+			move(
+				f->row->rx + get_field_pos_mod(f, buf_pos, s),
+				f->row->ry + get_field_pos_line(f, buf_pos, s)
+			);
+		}
 	}
 }
 
@@ -371,12 +374,37 @@ struct Result field_char_shift(
 	char *buffer,
 	size_t pos,
 	size_t len,
+	enum field_mode fm,
 	struct style *s)
 {
 	struct Result r;
 
+// Behaves differently depending on input/traverse
+// Traverse will always want to print from the beginnging, traverse will not
+// Switch case here?
+/*
+	switch(fm) {
+		case TRAVERSE:
+			break;
+		case ENTRY:
+			if (get_field_len(f, len, s) > f->max_entry_height * f->row->sx) {
+				move(
+					f->row->rx + f->name_len + s->text_divider_len,
+					f->row->ry
+				);
+				printf("%s", "...");
+			}
+			break;
+	};
+*/
+
+	// Need to incorporate some additional offset var here
+
+	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
+
 	// If char does not necessitate a shift
-	if (pos == len - 1) {
+	// <= may or may not be correct here
+	if (pos == len - 1 && f->value_offset <= 0) {
 		move(
 			f->row->rx + get_field_pos_mod(f, pos, s),
 			f->row->ry + get_field_pos_line(f, pos, s)
@@ -387,40 +415,148 @@ struct Result field_char_shift(
 		return r;
 	}
 
+	// This can't be line based, or at least has to recognize that current line can implicate first if there is overflow
+
+	if (f->value_offset < 0) {
+		for (int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
+			if (i == get_field_pos_line(f, pos, s)) {
+				move(
+					f->row->rx + get_field_pos_mod(f, pos, s),
+					f->row->ry + get_field_pos_line(f, pos, s)
+				);
+				for (int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
+					printf(" ");
+				}
+				move(
+					f->row->rx + get_field_pos_mod(f, pos, s),
+					f->row->ry + get_field_pos_line(f, pos, s)
+				);
+
+				printf(
+					"%.*s",
+					f->row->sx - get_field_pos_mod(f, pos, s),
+					buffer + pos
+					
+				);
+			} else {
+				move(f->row->rx, f->row->ry + i);
+				for (int j = 0; j < f->row->sx; j++) {
+					printf(" ");
+				} 
+				move(f->row->rx, f->row->ry + i);
+				printf(
+					"%.*s",
+					f->row->sx,
+					buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1)
+				);
+			}
+		}
+	} else {
+		for (int i = 0; i < f->max_entry_height; i++) {
+			if (i == 0) {
+				move(
+					f->row->rx + f->name_len + s->text_divider_len,
+					f->row->ry
+				);
+				for (int j = 0; j < f->row->sx - f->name_len - s->text_divider_len; j++) {
+					printf(" ");
+				}
+				move(
+					f->row->rx + f->name_len + s->text_divider_len,
+					f->row->ry
+				);
+
+				printf(
+					"%.*s",
+					f->row->sx - f->name_len - s->text_divider_len,
+					buffer + f->value_offset
+				);
+			} else {
+				move(
+					f->row->rx,
+					f->row->ry + i
+				);
+				for (int j = 0; j < f->row->sx; j++) {
+					printf(" ");
+				}
+				move(
+					f->row->rx,
+					f->row->ry + i
+				);
+				printf(
+					"%.*s",
+					f->row->sx,
+					buffer +  (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1) + f->value_offset
+				);
+			}
+		}
+	}
+
+
+/*
 	for (int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
 		if (i == get_field_pos_line(f, pos, s)) {
-			move(
-				f->row->rx + get_field_pos_mod(f, pos, s),
-				f->row->ry + get_field_pos_line(f, pos, s)
-			);
-			for (int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
-				printf(" ");
-			}
-			move(
-				f->row->rx + get_field_pos_mod(f, pos, s),
-				f->row->ry + get_field_pos_line(f, pos, s)
-			);
+			if (f->value_offset <= 0) {
+				move(
+					f->row->rx + get_field_pos_mod(f, pos, s),
+					f->row->ry + get_field_pos_line(f, pos, s)
+				);
+				for (int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
+					printf(" ");
+				}
+				move(
+					f->row->rx + get_field_pos_mod(f, pos, s),
+					f->row->ry + get_field_pos_line(f, pos, s)
+				);
 
-			printf(
-				"%.*s",
-				f->row->sx - get_field_pos_mod(f, pos, s),
-				buffer + pos
-			);
+				printf(
+					"%.*s",
+					f->row->sx - get_field_pos_mod(f, pos, s),
+					buffer + pos
+					
+				);
+			} else {
+				move(
+					f->row->rx + f->name_len + s->text_divider_len,
+					f->row->ry
+				);
+				for (int j = 0; j < f->row->sx - s->text_divider_len - f->name_len; j++) {
+					printf(" ");
+				}
+				move(
+					f->row->rx + f->name_len + s->text_divider_len,
+					f->row->ry
+				);
+
+				printf(
+					"%.*s",
+					f->row->sx - s->text_divider_len - f->name_len,
+					buffer + f->value_offset
+				);
+			}
 		} else {
 			move(f->row->rx, f->row->ry + i);
 			for (int j = 0; j < f->row->sx; j++) {
 				printf(" ");
 			} 
 			move(f->row->rx, f->row->ry + i);
-			printf(
-				"%.*s",
-				f->row->sx,
-				buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1)
-			);
+			if (f->value_offset <= 0) {
+				printf(
+					"%.*s",
+					f->row->sx,
+					buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1)
+				);
+			} else {
+				printf(
+					"%.*s",
+					f->row->sx,
+					buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1) + f->value_offset
+				);
+			}
 		}
 
 	}
-
+*/
 	r.rc = 0;
 	return r;
 }
@@ -437,11 +573,16 @@ struct Result field_backspace(struct field *f, struct style *s)
 		);
 
 		buf_pos--;
-		printf("\b \b");
-
-		r = field_char_shift(f, buf, buf_pos, buf_len, s);
-		field_cursor_shift(f, s);
 		buf_len--;
+
+		f->value_offset = get_field_len(f, buf_len, s) - (f->row->sx * f->max_entry_height);
+		// Need extra condition here for if middle of string
+		if (f->value_offset < 0) {
+			printf("\b \b");
+		}
+
+		r = field_char_shift(f, buf, buf_pos, buf_len, (enum field_mode){ ENTRY }, s);
+		field_cursor_shift(f, s);
 	}
 
 	r.rc = 0;
@@ -458,11 +599,23 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 		return r;
 	}
 
+
+	if (buf_len + 1 == f->max_entry_length) {
+		r.rc = 0;
+		return r;
+	}
+
+
+	// All of this logic has to be based on entry length, not line construct
+	// to support limitless input, dot dot dots, etc.
+	
+
 	/* Not a fan of this code */
 
 	// Need to do something here other than iterating buf_len
 	// Either generalized function or something else
 	/* */
+	/*
 	buf_len++;
 	if (
 		get_field_len_line(f, buf_len, s) > f->max_entry_height
@@ -474,25 +627,24 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 	} else {
 		buf_len--;
 	}
-	buf_len++;
-	if (get_field_len_line(f, buf_len, s) > f->row->sy) {
-		r = clear_horizontal_bar(
-			f->column,
-			f->row->ry + f->row->sy,
-			s
-		);
+	*/
 
-		f->row->sy++;
-		r = draw_horizontal_bar(
-			f->column,
-			f->row->ry + f->row->sy,
-			s
-		);
+	if (f->value_offset < 0) {
+		if (get_field_len_line(f, buf_len + 1, s) > f->row->sy) {
+			r = clear_horizontal_bar(
+				f->column,
+				f->row->ry + f->row->sy,
+				s
+			);
+
+			f->row->sy++;
+			r = draw_horizontal_bar(
+				f->column,
+				f->row->ry + f->row->sy,
+				s
+			);
+		}
 	}
-	buf_len--;
-	/* */
-
-
 
 
 	// Need to incorporate edge test here before iterating
@@ -507,7 +659,7 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 	buf[buf_pos] = *c;
 	buf_len++;
 
-	r = field_char_shift(f, buf, buf_pos, buf_len, s);
+	r = field_char_shift(f, buf, buf_pos, buf_len, (enum field_mode){ ENTRY }, s);
 	buf_pos++;
 
 	field_cursor_shift(f, s);
@@ -539,7 +691,7 @@ struct Result field_switch(struct field *f, struct style *s)
 		buf_pos = f->value_pos;
 		buf_len = f->value_len;
 
-		r = field_char_shift(f, buf, 0, buf_len, s);
+		r = field_char_shift(f, buf, 0, (enum field_mode){ ENTRY}, buf_len, s);
 		field_cursor_shift(f, s);
 	} else {
 		buf_len = 0;

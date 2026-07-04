@@ -67,9 +67,10 @@ struct field {
 	char *value;
 	size_t value_pos;
 
-
 	int name_len;
 	size_t value_len;
+
+	int value_offset;
 
 	// Probably don't need this to be field bound since you're bound to entry
 	// if you're doing it	
@@ -80,6 +81,8 @@ struct field {
 
 	int min_traverse_height;
 	int max_traverse_height;
+
+	size_t max_entry_length;
 };
 
 struct column {

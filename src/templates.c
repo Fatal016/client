@@ -17,8 +17,9 @@ struct column search_menu_search_column = {
 				.max_traverse_height = 1,
 
 				.min_entry_height = 1,
-				.max_entry_height = 2
+				.max_entry_height = 1,
 
+				.max_entry_length = 2048
 			},
 			.type = FIELD,
 		},

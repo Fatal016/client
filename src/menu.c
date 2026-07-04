@@ -40,6 +40,8 @@ struct Result init_field(struct field *f, struct row *cr)
 	f->name_len = strlen(f->name);
 	f->value_len = strlen(f->value);
 
+	f->value_offset = 0;
+
 	r.rc = 0;
 	return r;
 }
@@ -73,7 +75,7 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 		case TRAVERSE:
 			f->row->sy = f->min_traverse_height;
 			printf("%s%s", f->name, s->text_divider);
-			r = field_char_shift(f, f->value, 0, f->value_len, s);
+			r = field_char_shift(f, f->value, 0, f->value_len, (enum field_mode){ TRAVERSE }, s);
 			break;
 	}
 	
@@ -182,6 +184,9 @@ struct Result init_module(struct menu *m, struct winsize *w)
 	return r;
 }
 
+// Switch module notation to window notation?
+// Then expose winsize through parent window, as to not pass the var everywhere
+// If necessary though, if setting sx and sy externally, may not be necessary for menus to be aware of that scope
 struct Result scale_module(struct menu *m, struct winsize *w)
 {
 	struct Result r;

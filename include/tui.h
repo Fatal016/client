@@ -83,6 +83,7 @@ struct Result field_char_shift(
 	char *buffer,
 	size_t pos,
 	size_t len,
+	enum field_mode fm,
 	struct style *s);
 
 //int get_field_pos(struct field *f, size_t*, struct style *s);
