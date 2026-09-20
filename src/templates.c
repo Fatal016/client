@@ -23,9 +23,9 @@ struct column search_menu_search_column = {
 			},
 			.type = FIELD,
 		},
-		&(struct row) {
-			.type = BREAK
-		},
+//		&(struct row) {
+//			.type = BREAK
+//		},
 		&(struct row) {
 			.data = &(struct field) {
 				.name = "Test",
