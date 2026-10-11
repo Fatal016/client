@@ -137,7 +137,8 @@ struct Result menu_enter(struct menu **m, struct winsize *w, struct style *s)
 		case FIELD:
 			set_style_field(
 				(struct field *)cr->data,
-				(enum field_mode){ ENTRY }, s
+				(enum field_mode){ ENTRY },
+				s
 			);
 			break;
 		default:
@@ -221,7 +222,6 @@ struct Result field_escape(struct field *f, struct style *s)
 						buf,
 						buf_pos,
 						buf_len,
-						ENTRY,
 						s
 					);
 				}
@@ -264,7 +264,6 @@ struct Result field_escape(struct field *f, struct style *s)
 						buf,
 						buf_pos,
 						buf_len,
-						ENTRY,
 						s
 					);
 				}
@@ -348,11 +347,11 @@ void field_cursor_shift(struct field *f, struct style *s)
 }
 
 
-int get_field_height(struct field *f, struct style *s, enum field_mode fm)
+int get_field_height(struct field *f, struct style *s)
 {
 	int h = 0;
 
-	switch (fm) {
+	switch (f->mode) {
 		case ENTRY:
 			if (f->min_entry_height > get_field_len_line(f, f->value_len, s)) {
 //			if (f->min_entry_height > get_field_len_line(f, buf_len, s)) {
@@ -410,53 +409,32 @@ int get_field_len(
 	return f->name_len + s->text_divider_len + len;
 }
 
-// Needs to take into account max length
-// Should this take an enum or just plain int?
-
-// This is pretty horrendous...
 int get_field_len_line(
 	struct field *f,
 	size_t len,
-	enum field_mode fm,
 	struct style *s)
 {
 
+	int _len;
 	if (!get_field_len_mod(f, len, s)) {
-		int len = (f->name_len + s->text_divider_len + len)/f->row->sx;
-		switch (fm) {
-			case TRAVERSE:
-				if (len > f->max_traverse_height) {
-					return f->max_traverse_height;
-				} else {
-					return len;
-				}
-			case ENTRY:
-				if (len > f->max_entry_height) {
-					return f->max_entry_height;
-				} else {
-					return len;
-				}
-		}
-
-
-		return (f->name_len + s->text_divider_len + len)/f->row->sx;
+		_len = (f->name_len + s->text_divider_len + len)/f->row->sx;
 	} else {
-		switch (fm) {
-			int len = (f->name_len + s->text_divider_len + len)/f->row->sx + 1;
-			case TRAVERSE:
-				if (len > f->max_traverse_height) {
-					return f->max_traverse_height;
-				} else {
-					return len;
-				}
-			case ENTRY:
-				if (len > f->max_entry_height) {
-					return f->max_entry_height;
-				} else {
-					return len;
-				}
+		_len = (f->name_len + s->text_divider_len + len)/f->row->sx + 1;
+	}
+
+	switch (f->mode) {
+		case TRAVERSE:
+			if (_len > f->max_traverse_height) {
+				return f->max_traverse_height;
+			} else {
+				return _len;
 			}
-		}
+		case ENTRY:
+			if (_len > f->max_entry_height) {
+				return f->max_entry_height;
+			} else {
+				return _len;
+			}
 	}
 }
 
@@ -473,7 +451,6 @@ struct Result field_char_shift(
 	char *buffer,
 	size_t pos,
 	size_t len,
-	enum field_mode fm,
 	struct style *s)
 {
 	struct Result r;
@@ -687,7 +664,7 @@ struct Result field_backspace(struct field *f, struct style *s)
 			printf("\b \b");
 		}
 
-		r = field_char_shift(f, buf, buf_pos, buf_len, (enum field_mode){ ENTRY }, s);
+		r = field_char_shift(f, buf, buf_pos, buf_len, s);
 		field_cursor_shift(f, s);
 	}
 
@@ -736,7 +713,7 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 	*/
 
 	if (f->value_offset < 0) {
-		if (get_field_len_line(f, buf_len + 1, (enum field_mode){ ENTRY }, s) > f->row->sy) {
+		if (get_field_len_line(f, buf_len + 1, s) > f->row->sy) {
 			r = clear_horizontal_bar(
 				f->column,
 				f->row->ry + f->row->sy,
@@ -767,7 +744,7 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 
 	f->value_offset = get_field_len(f, buf_len, s) - (f->row->sx * f->max_entry_height);
 
-	r = field_char_shift(f, buf, buf_pos, buf_len, (enum field_mode){ ENTRY }, s);
+	r = field_char_shift(f, buf, buf_pos, buf_len, s);
 	buf_pos++;
 
 	field_cursor_shift(f, s);
@@ -781,7 +758,7 @@ struct Result field_switch(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	r = draw_field(f, s, (enum field_mode){ ENTRY });
+	r = draw_field(f, s);
 
 	move(f->row->rx, f->row->ry);
 	printf(f->name);
@@ -799,7 +776,7 @@ struct Result field_switch(struct field *f, struct style *s)
 		buf_pos = f->value_pos;
 		buf_len = f->value_len;
 
-		r = field_char_shift(f, buf, 0, (enum field_mode){ ENTRY}, buf_len, s);
+		r = field_char_shift(f, buf, 0, buf_len, s);
 		field_cursor_shift(f, s);
 	} else {
 		buf_len = 0;

@@ -42,17 +42,19 @@ struct Result init_field(struct field *f, struct row *cr)
 
 	f->value_offset = 0;
 
+	f->mode = (enum field_mode){ TRAVERSE };
+
 	r.rc = 0;
 	return r;
 }
 
-struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
+struct Result draw_field(struct field *f, struct style *s)
 {
 	struct Result r;
 
 	int h;
 
-	switch(fm) {
+	switch(f->mode) {
 		case ENTRY:
 			// Need to test shifting down all rows in a column on user entry
 			// When horizontal bar is shifted down, update sy of this row and then draw menu from row +1 onwards
@@ -61,11 +63,11 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 
 			// f->row->sy = f->max...
 
-			h = get_field_height(f, s, fm);			
+			h = get_field_height(f, s);
 			f->row->sy = h;
 
 
-			r = clear_field_box(f, s, fm);
+			r = clear_field_box(f, s);
 			r = draw_box_aware(
 				f->row,
 				h,
@@ -75,7 +77,7 @@ struct Result draw_field(struct field *f, struct style *s, enum field_mode fm)
 		case TRAVERSE:
 			f->row->sy = f->min_traverse_height;
 			printf("%s%s", f->name, s->text_divider);
-			r = field_char_shift(f, f->value, 0, f->value_len, (enum field_mode){ TRAVERSE }, s);
+			r = field_char_shift(f, f->value, 0, f->value_len, s);
 			break;
 	}
 	
@@ -106,8 +108,7 @@ struct Result draw_row(
 			result = init_field((struct field *)r->data, r);
 			result = draw_field(
 				(struct field *)r->data,
-				s,
-				(enum field_mode){ TRAVERSE }
+				s
 			);
 			break;
 		case BREAK:
@@ -457,7 +458,8 @@ struct Result unset_style_field(struct field *f, struct style *s)
 	return result;
 }
 
-struct Result set_style_field(struct field *f,
+struct Result set_style_field(
+	struct field *f,
 	enum field_mode fm,
 	struct style *s)
 {
@@ -470,7 +472,7 @@ struct Result set_style_field(struct field *f,
 */
 	switch (fm) {
 		case TRAVERSE:
-			//f->mode = TRAVERSE;
+			f->mode = TRAVERSE;
 			move(f->row->rx, f->row->ry);
 			printf("\033[%d;%dm%*s\033[0m\n",
 				s->text->foreground,
@@ -480,13 +482,13 @@ struct Result set_style_field(struct field *f,
 			);
 			break;
 		case ENTRY:
-			//f->mode = ENTRY;
+			f->mode = ENTRY;
 			result = field_switch(f, s);
 
 			// Should modules perform their own cleanup? Unsure
 			clear_column(f->row->column);
 
-			set_style_field(f, TRAVERSE, s);
+			set_style_field(f, (enum field_mode){ TRAVERSE }, s);
 
 			draw_column(f->row->column, s);
 			result = set_style(f->row, s);
@@ -545,14 +547,11 @@ struct Result set_style(struct row *r, struct style *s)
 	return result;
 }
 
-struct Result clear_field_box(
-	struct field *f,
-	struct style *s,
-	enum field_mode fm)
+struct Result clear_field_box(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	int h = get_field_height(f, s, fm);
+	int h = get_field_height(f, s);
 
 	for (int i = 0; i < h; i++) {
 		if (i == 0) {
