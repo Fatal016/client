@@ -91,7 +91,7 @@ int get_field_pos_line(struct field *f, size_t, struct style *s);
 int get_field_pos_mod(struct field *f, size_t, struct style *s);
 
 int get_field_len(struct field *f, size_t, struct style *s);
-int get_field_len_line(struct field *f, size_t, struct style *s);
+int get_field_len_line(struct field *f, size_t, enum field_mode, struct style *s);
 int get_field_len_mod(struct field *f, size_t, struct style *s);
 int get_field_height(struct field *f, struct style *s, enum field_mode);
 

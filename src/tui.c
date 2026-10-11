@@ -197,6 +197,8 @@ struct Result field_enter(struct field *f, struct style *s)
 	return r;
 }
 
+// Dont worry about locking right now
+// Focus on right->left shifts, etc.
 
 struct Result field_escape(struct field *f, struct style *s)
 {
@@ -249,7 +251,14 @@ struct Result field_escape(struct field *f, struct style *s)
 				if (f->value_offset <= 0) {
 					printf("\b");
 				} else {
-//					f->value_offset--;
+					// need to get pos position relative to beginning of line, not relative to any kind of 
+
+					// Will need logic here when beginning of line and 
+
+					// Dont want to decrement value_offset
+					//
+				
+					// This needs to work
 					r = field_char_shift(
 						f,
 						buf,
@@ -309,30 +318,30 @@ struct Result field_char_check_edge(struct field *f, struct style *s)
 	return r;
 }
 
-// In theory, this shouldn't even necessarily be a requirement
-// Only hard reason this exists is because of not wanting to jump to next line on end char
 void field_cursor_shift(struct field *f, struct style *s)
 {
-	if (f->value_offset <= 0) {
+	if (f->value_offset < 0) {
 		move(
 			f->row->rx + get_field_pos_mod(f, buf_pos, s),
 			f->row->ry + get_field_pos_line(f, buf_pos, s)
 		);
 	} else {
-		// Ensures that cursor remains at end of line instead of jumping down
 		if (get_field_pos_mod(f, buf_pos, s) == 0) {
 			move(
 				f->row->rx + f->row->sx,
 				f->row->ry + get_field_pos_line(f, buf_pos, s) - 1
 			);
+		} else if (get_field_pos_mod(f, buf_pos, s) <= f->name_len + s->text_divider_len) {
+			move(
+				f->row->rx + f->name_len + s->text_divider_len,
+				f->row->ry + get_field_pos_line(f, buf_pos, s)
+			);
+		// Ensures that cursor remains at end of line instead of jumping down
 		} else {
 			move(
-				// Incorporate offset logic in pos_mod and other functions
-				f->row->rx + f->name_len + s->text_divider_len + get_field_pos_mod(f, buf_pos, s) - f->value_offset,
-//				f->row->ry + get_field_pos_line(f, buf_pos, s)
+				f->row->rx + get_field_pos_mod(f, buf_pos, s),
 				f->row->ry + f->max_entry_height - 1
 			);
-
 			// Have it stay at beginning of line
 		}
 	}
@@ -373,7 +382,12 @@ int get_field_pos_line(
 	size_t pos,
 	struct style *s)
 {
-	return (f->name_len + s->text_divider_len + pos)/f->row->sx;
+//	return (f->name_len + s->text_divider_len + pos)/f->row->sx;
+	if (f->value_offset < 0) {
+		return (f->name_len + s->text_divider_len + pos)/f->row->sx;
+	} else {
+		return (f->name_len + s->text_divider_len + pos - f->value_offset) / f->row->sx;
+	}
 }
 
 int get_field_pos_mod(
@@ -381,7 +395,11 @@ int get_field_pos_mod(
 	size_t pos,
 	struct style *s)
 {
-	return (f->name_len + s->text_divider_len + pos) % f->row->sx;
+	if (f->value_offset < 0) {
+		return (f->name_len + s->text_divider_len + pos) % f->row->sx;
+	} else {
+		return (f->name_len + s->text_divider_len + pos - f->value_offset) % f->row->sx;
+	}
 }
 
 int get_field_len(
@@ -392,15 +410,53 @@ int get_field_len(
 	return f->name_len + s->text_divider_len + len;
 }
 
+// Needs to take into account max length
+// Should this take an enum or just plain int?
+
+// This is pretty horrendous...
 int get_field_len_line(
 	struct field *f,
 	size_t len,
+	enum field_mode fm,
 	struct style *s)
 {
+
 	if (!get_field_len_mod(f, len, s)) {
+		int len = (f->name_len + s->text_divider_len + len)/f->row->sx;
+		switch (fm) {
+			case TRAVERSE:
+				if (len > f->max_traverse_height) {
+					return f->max_traverse_height;
+				} else {
+					return len;
+				}
+			case ENTRY:
+				if (len > f->max_entry_height) {
+					return f->max_entry_height;
+				} else {
+					return len;
+				}
+		}
+
+
 		return (f->name_len + s->text_divider_len + len)/f->row->sx;
 	} else {
-		return (f->name_len + s->text_divider_len + len)/f->row->sx + 1;
+		switch (fm) {
+			int len = (f->name_len + s->text_divider_len + len)/f->row->sx + 1;
+			case TRAVERSE:
+				if (len > f->max_traverse_height) {
+					return f->max_traverse_height;
+				} else {
+					return len;
+				}
+			case ENTRY:
+				if (len > f->max_entry_height) {
+					return f->max_entry_height;
+				} else {
+					return len;
+				}
+			}
+		}
 	}
 }
 
@@ -441,10 +497,13 @@ struct Result field_char_shift(
 	};
 */
 
-//	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
+	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
+
+	// Should this function be responsible for printing new char?
 
 	// If char does not necessitate a shift
 	// <= may or may not be correct here
+	/*
 	if (pos == len - 1 && f->value_offset <= 0) {
 		move(
 			f->row->rx + get_field_pos_mod(f, pos, s),
@@ -455,6 +514,8 @@ struct Result field_char_shift(
 		r.rc = 0;
 		return r;
 	}
+*/
+	// Does vlaue offset need to be recalculated here? Or change shift to < 0?
 
 	if (f->value_offset < 0) {
 		for (int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
@@ -494,8 +555,10 @@ struct Result field_char_shift(
 		// Cannot be relying on max entry height
 		// This function is used for both entry and traverse, need to toggle between which one is the limitation
 		// May just need to do get field len line 
-//		for (int i = 0; i < get_field_len_line(f, len, s); i++) {
-		for (int i = 0; i < f->max_entry_height; i++) {
+
+		// get_field_len_line must take into account offset/line limits
+		for (int i = 0; i < get_field_len_line(f, len, s); i++) {
+//		for (int i = 0; i < f->max_entry_height; i++) {
 			if (i == 0) {
 				move(
 					f->row->rx + f->name_len + s->text_divider_len,
@@ -673,7 +736,7 @@ struct Result field_char(struct field *f, struct style *s, int *c)
 	*/
 
 	if (f->value_offset < 0) {
-		if (get_field_len_line(f, buf_len + 1, s) > f->row->sy) {
+		if (get_field_len_line(f, buf_len + 1, (enum field_mode){ ENTRY }, s) > f->row->sy) {
 			r = clear_horizontal_bar(
 				f->column,
 				f->row->ry + f->row->sy,
