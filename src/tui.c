@@ -79,7 +79,7 @@ struct Result menu_d_arrow(struct menu *m, struct style *s)
 	r = unset_style(cc->rs[cc->cr], s);
 
 	if (cc->rs[cc->cr + 1]->type == BREAK) {
-		if (cc->cr + 1 == cc-> nr - 1) {
+		if (cc->cr + 1 == cc->nr - 1) {
 			r.rc = 0;
 			return r;
 		} else {
@@ -108,7 +108,7 @@ struct Result menu_u_arrow(struct menu *m, struct style *s)
 	r = unset_style(cc->rs[cc->cr], s);
 	
 	if (cc->rs[cc->cr - 1]->type == BREAK) {
-		if (cc->cr + 1 == cc-> nr - 1) {
+		if (cc->cr == 0) {
 			r.rc = 0;
 			return r;
 		} else {
@@ -215,6 +215,10 @@ struct Result field_escape(struct field *f, struct style *s)
 			if (buf_pos < buf_len) {
 				buf_pos++;
 
+
+				// Shift is controlled here
+				// Let char shift do its thing
+				// Otherwise, just need to trigger shift when stuck in middle
 				if (f->value_offset > 0) {
 					f->value_offset++;
 					r = field_char_shift(
@@ -242,15 +246,50 @@ struct Result field_escape(struct field *f, struct style *s)
 		} else if (c == 'D') {
 			if (buf_pos > 0) {
 				buf_pos--;
+				set_field_value_offset(f, buf_len, s);
 
 
 				// Shift needs to be relative to current pos
 				// Don't want cursor to be stuck at end of line
 				// Shouldn't be too hard?
+				int width = f->row->sx - f->name_len - s->text_divider_len;
+				int window_pos = buf_pos - f->value_offset;
+
+				int setting = 50;
+				int proportion = (window_pos * 100) / width;
 
 				if (f->value_offset <= 0) {
 					printf("\b");
 				} else {
+
+					// Percentage
+
+//					if (proportion < setting + 5 && f->value_offset == 0) {
+						// What is the shift here?
+						r = field_char_shift(
+							f,
+							buf,
+							buf_pos,
+							buf_len,
+							s
+						);
+//					}
+
+
+					// width
+
+					// buf_pos - f->value_offset = window_pos 
+					// shift when width/window_pos = 2 (50%) and value_offset > 0
+
+
+					// Shift when
+					// Value offset dictates window
+					
+					// relationship between offset and cursor_pos
+
+					// Need viewable window pos.
+					// Compare to proportion, 50:50. This can be static and calculated during resize event
+
 					// need to get pos position relative to beginning of line, not relative to any kind of 
 
 					// Will need logic here when beginning of line and 
@@ -259,13 +298,15 @@ struct Result field_escape(struct field *f, struct style *s)
 					//
 				
 					// This needs to work
-					r = field_char_shift(
-						f,
-						buf,
-						buf_pos,
-						buf_len,
-						s
-					);
+			
+					// This doesn't need any concept of window, 
+//					r = field_char_shift(
+//						f,
+//						buf,
+//						buf_pos,
+//						buf_len,
+//						s
+//					);
 				}
 
 
@@ -297,17 +338,6 @@ struct Result field_char_check_edge(struct field *f, struct style *s)
 	int num = (f->name_len + s->text_divider_len + buf_pos);
 	int den = f->row->sx;
 
-// Meed to have this let shift only occur after +1 to mod.
-// Want to have cursor end of line for sake of limitations
-/*
-	// If right edge
-	if (get_field_pos_mod(f, s) == f->row->sx) {
-		num++;
-//		num--;
-	} else {
-		num--;
-	}
-*/
 	if (num % den == 0) {
 		r.rc = num/den;
 		return r;
@@ -317,6 +347,7 @@ struct Result field_char_check_edge(struct field *f, struct style *s)
 	return r;
 }
 
+// This will need some more optimization
 void field_cursor_shift(struct field *f, struct style *s)
 {
 	if (f->value_offset < 0) {
@@ -335,6 +366,7 @@ void field_cursor_shift(struct field *f, struct style *s)
 				f->row->rx + f->name_len + s->text_divider_len,
 				f->row->ry + get_field_pos_line(f, buf_pos, s)
 			);
+	
 		// Ensures that cursor remains at end of line instead of jumping down
 		} else {
 			move(
@@ -347,18 +379,17 @@ void field_cursor_shift(struct field *f, struct style *s)
 }
 
 
-int get_field_height(struct field *f, struct style *s)
+
+unsigned int get_field_height(struct field *f, struct style *s)
 {
 	int h = 0;
 
 	switch (f->mode) {
 		case ENTRY:
 			if (f->min_entry_height > get_field_len_line(f, f->value_len, s)) {
-//			if (f->min_entry_height > get_field_len_line(f, buf_len, s)) {
 				h = f->min_entry_height;
 			} else {
 				h = get_field_len_line(f, f->value_len, s);
-//				h = get_field_len_line(f, buf_len, s);
 			}
 			break;
 		case TRAVERSE:
@@ -367,21 +398,12 @@ int get_field_height(struct field *f, struct style *s)
 
 	return h;
 }
-/*
-int get_field_pos(
-	struct field *f,
-	size_t *pos,
-	struct style *s)
-{
-	return f->name_len + s->text_divider_len + *pos;
-}
-*/
-int get_field_pos_line(
+
+unsigned int get_field_pos_line(
 	struct field *f,
 	size_t pos,
 	struct style *s)
 {
-//	return (f->name_len + s->text_divider_len + pos)/f->row->sx;
 	if (f->value_offset < 0) {
 		return (f->name_len + s->text_divider_len + pos)/f->row->sx;
 	} else {
@@ -389,7 +411,7 @@ int get_field_pos_line(
 	}
 }
 
-int get_field_pos_mod(
+unsigned int get_field_pos_mod(
 	struct field *f,
 	size_t pos,
 	struct style *s)
@@ -401,7 +423,7 @@ int get_field_pos_mod(
 	}
 }
 
-int get_field_len(
+unsigned int get_field_len(
 	struct field *f,
 	size_t len,
 	struct style *s)
@@ -409,13 +431,21 @@ int get_field_len(
 	return f->name_len + s->text_divider_len + len;
 }
 
-int get_field_len_line(
+void set_field_value_offset(
+	struct field *f,
+	size_t len,
+	struct style *s)
+{
+	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
+}
+
+unsigned int get_field_len_line(
 	struct field *f,
 	size_t len,
 	struct style *s)
 {
 
-	int _len;
+	unsigned int _len;
 	if (!get_field_len_mod(f, len, s)) {
 		_len = (f->name_len + s->text_divider_len + len)/f->row->sx;
 	} else {
@@ -436,9 +466,12 @@ int get_field_len_line(
 				return _len;
 			}
 	}
+
+	// Placeholder
+	return 0;
 }
 
-int get_field_len_mod(
+unsigned int get_field_len_mod(
 	struct field *f,
 	size_t len,
 	struct style *s)
@@ -446,6 +479,7 @@ int get_field_len_mod(
 	return (f->name_len + s->text_divider_len + len) % f->row->sx;
 }
 
+// Pos should be irrelevant here. Rename to origin?
 struct Result field_char_shift(
 	struct field *f,
 	char *buffer,
@@ -474,7 +508,7 @@ struct Result field_char_shift(
 	};
 */
 
-	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
+//	f->value_offset = get_field_len(f, len, s) - (f->row->sx * f->max_entry_height);
 
 	// Should this function be responsible for printing new char?
 
@@ -492,16 +526,14 @@ struct Result field_char_shift(
 		return r;
 	}
 */
-	// Does vlaue offset need to be recalculated here? Or change shift to < 0?
-
 	if (f->value_offset < 0) {
-		for (int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
+		for (unsigned int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
 			if (i == get_field_pos_line(f, pos, s)) {
 				move(
 					f->row->rx + get_field_pos_mod(f, pos, s),
 					f->row->ry + get_field_pos_line(f, pos, s)
 				);
-				for (int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
+				for (unsigned int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
 					printf(" ");
 				}
 				move(
@@ -517,7 +549,7 @@ struct Result field_char_shift(
 				);
 			} else {
 				move(f->row->rx, f->row->ry + i);
-				for (int j = 0; j < f->row->sx; j++) {
+				for (unsigned int j = 0; j < f->row->sx; j++) {
 					printf(" ");
 				} 
 				move(f->row->rx, f->row->ry + i);
@@ -529,19 +561,13 @@ struct Result field_char_shift(
 			}
 		}
 	} else {
-		// Cannot be relying on max entry height
-		// This function is used for both entry and traverse, need to toggle between which one is the limitation
-		// May just need to do get field len line 
-
-		// get_field_len_line must take into account offset/line limits
-		for (int i = 0; i < get_field_len_line(f, len, s); i++) {
-//		for (int i = 0; i < f->max_entry_height; i++) {
+		for (unsigned int i = 0; i < get_field_len_line(f, len, s); i++) {
 			if (i == 0) {
 				move(
 					f->row->rx + f->name_len + s->text_divider_len,
 					f->row->ry
 				);
-				for (int j = 0; j < f->row->sx - f->name_len - s->text_divider_len; j++) {
+				for (unsigned int j = 0; j < f->row->sx - f->name_len - s->text_divider_len; j++) {
 					printf(" ");
 				}
 				move(
@@ -549,6 +575,7 @@ struct Result field_char_shift(
 					f->row->ry
 				);
 
+				// This needs to be able to be offset additionally
 				printf(
 					"%.*s",
 					f->row->sx - f->name_len - s->text_divider_len,
@@ -559,7 +586,7 @@ struct Result field_char_shift(
 					f->row->rx,
 					f->row->ry + i
 				);
-				for (int j = 0; j < f->row->sx; j++) {
+				for (unsigned int j = 0; j < f->row->sx; j++) {
 					printf(" ");
 				}
 				move(
@@ -574,72 +601,7 @@ struct Result field_char_shift(
 			}
 		}
 	}
-
-
-/*
-	for (int i = get_field_pos_line(f, pos, s); i < get_field_len_line(f, len, s); i++) {
-		if (i == get_field_pos_line(f, pos, s)) {
-			if (f->value_offset <= 0) {
-				move(
-					f->row->rx + get_field_pos_mod(f, pos, s),
-					f->row->ry + get_field_pos_line(f, pos, s)
-				);
-				for (int j = 0; j < f->row->sx - get_field_pos_mod(f, pos, s); j++) {
-					printf(" ");
-				}
-				move(
-					f->row->rx + get_field_pos_mod(f, pos, s),
-					f->row->ry + get_field_pos_line(f, pos, s)
-				);
-
-				printf(
-					"%.*s",
-					f->row->sx - get_field_pos_mod(f, pos, s),
-					buffer + pos
-					
-				);
-			} else {
-				move(
-					f->row->rx + f->name_len + s->text_divider_len,
-					f->row->ry
-				);
-				for (int j = 0; j < f->row->sx - s->text_divider_len - f->name_len; j++) {
-					printf(" ");
-				}
-				move(
-					f->row->rx + f->name_len + s->text_divider_len,
-					f->row->ry
-				);
-
-				printf(
-					"%.*s",
-					f->row->sx - s->text_divider_len - f->name_len,
-					buffer + f->value_offset
-				);
-			}
-		} else {
-			move(f->row->rx, f->row->ry + i);
-			for (int j = 0; j < f->row->sx; j++) {
-				printf(" ");
-			} 
-			move(f->row->rx, f->row->ry + i);
-			if (f->value_offset <= 0) {
-				printf(
-					"%.*s",
-					f->row->sx,
-					buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1)
-				);
-			} else {
-				printf(
-					"%.*s",
-					f->row->sx,
-					buffer + (f->row->sx - f->name_len - s->text_divider_len) + f->row->sx * (i - 1) + f->value_offset
-				);
-			}
-		}
-
-	}
-*/
+	
 	r.rc = 0;
 	return r;
 }
@@ -886,7 +848,7 @@ void clear_column(struct column *c)
 	}
 }
 
-bool edge_detect(struct column *c, int ry)
+bool edge_detect(struct column *c, unsigned int ry)
 {
 	for (int i = 0; i < c->nr; i++) {
 		struct row *r = c->rs[i];

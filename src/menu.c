@@ -56,13 +56,10 @@ struct Result draw_field(struct field *f, struct style *s)
 
 	switch(f->mode) {
 		case ENTRY:
+			// This may be a later feature. Need things to be performant for this to not introduce lag I think
 			// Need to test shifting down all rows in a column on user entry
 			// When horizontal bar is shifted down, update sy of this row and then draw menu from row +1 onwards
 			// As efficient as it gets
-
-
-			// f->row->sy = f->max...
-
 			h = get_field_height(f, s);
 			f->row->sy = h;
 
@@ -85,9 +82,7 @@ struct Result draw_field(struct field *f, struct style *s)
 	r.rc = 0;
 	r.data = (void *)malloc(sizeof(int));
 
-	// Convert to generalized get_field_len function
-	// get_field_len currently relies on active context of row
-	*(int *)(r.data) = f->name_len + s->text_divider_len + f->value_len;
+	*(int *)(r.data) = get_field_len(f, f->value_len, s);
 
 	return r;
 }
@@ -159,12 +154,13 @@ struct Result draw_column(
 struct Result init_module(struct menu *m, struct winsize *w)
 {
 	struct Result r;
-
+// This should just be defaulted in templates.h
+/*
 	if (!m->cc_set) {
 		m->cc = 0;
 		m->cc_set = true;
 	}
-
+*/
 	if (!m->rx_set) {
 		m->rx = 1;
 		m->rx_set = true;
@@ -394,20 +390,6 @@ struct Result draw_module(struct menu *m, struct winsize *w, struct style *s)
 }
 
 /*
-struct Result clear_style(struct row *r, struct style *s)
-{
-	switch(r->type) {
-		case MENU:
-			
-			break;
-		case FIELD:
-			break;
-		default:
-			break;
-	}
-}
-*/
-/*
 struct Result clear_style(struct menu *m, struct winsize *w, struct style *s)
 {	
 	if (menu->cur_y > w->ws_row - 2) {
@@ -513,6 +495,10 @@ struct Result unset_style(struct row *r, struct style *s)
 				s
 			);
 			break;
+		case MENU:
+			break;
+		case BREAK:
+			break;
 	}
 
 	result.rc = 0;
@@ -551,20 +537,20 @@ struct Result clear_field_box(struct field *f, struct style *s)
 {
 	struct Result r;
 
-	int h = get_field_height(f, s);
+	unsigned int h = get_field_height(f, s);
 
-	for (int i = 0; i < h; i++) {
+	for (unsigned int i = 0; i < h; i++) {
 		if (i == 0) {
 			move(
 				f->row->rx + f->name_len + s->text_divider_len,
 				f->row->ry + i
 			);
-			for (int j = 0; j < f->row->sx - (f->name_len + s->text_divider_len); j++) {
+			for (unsigned int j = 0; j < f->row->sx - (f->name_len + s->text_divider_len); j++) {
 				printf(" ");
 			}
 		} else {
 			move(f->row->rx, f->row->ry + i);
-			for (int j = 0; j < f->row->sx; j++) {
+			for (unsigned int j = 0; j < f->row->sx; j++) {
 				printf(" ");
 			}
 		}
